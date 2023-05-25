@@ -1,5 +1,6 @@
+use massa_proto::massa::abi::v1::{TestRequest, TestResponse};
+
 use crate::{
-    abi::proto::massa::abi::v1::{TestRequest, TestResponse},
     alloc::vec::Vec,
     allocator::get_parameters,
     allocator::EncodeLengthPrefixed,

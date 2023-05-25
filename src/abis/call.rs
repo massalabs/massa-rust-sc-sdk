@@ -1,5 +1,6 @@
+use massa_proto::massa::abi::v1::{Address, Amount, CallRequest, CallResponse};
+
 use crate::{
-    abi::proto::massa::abi::v1::{Address, Amount, CallRequest, CallResponse},
     alloc::{
         string::{String, ToString},
         vec::Vec,

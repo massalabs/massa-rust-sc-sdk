@@ -1,5 +1,6 @@
+use massa_proto::massa::abi::v1::GenerateEventRequest;
 use crate::{
-    abi::proto::massa::abi::v1::GenerateEventRequest, alloc::string::String,
+     alloc::string::String,
     allocator::EncodeLengthPrefixed,
 };
 

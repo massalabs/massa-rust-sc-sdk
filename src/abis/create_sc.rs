@@ -1,5 +1,6 @@
+use massa_proto::massa::abi::v1::{CreateScRequest, CreateScResponse};
+
 use crate::{
-    abi::proto::massa::abi::v1::{CreateScRequest, CreateScResponse},
     alloc::{
         string::{String, ToString},
         vec::Vec,

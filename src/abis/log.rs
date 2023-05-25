@@ -1,5 +1,7 @@
+use massa_proto::massa::abi::v1::LogRequest;
+
 use crate::{
-    abi::proto::massa::abi::v1::LogRequest, alloc::string::String,
+    alloc::string::String,
     allocator::EncodeLengthPrefixed,
 };
 

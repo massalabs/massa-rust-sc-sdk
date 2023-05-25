@@ -34,7 +34,6 @@ pub use alloc::{
 // pub use anyhow::{anyhow, Result};
 // ****************************************************************************
 
-mod abi;
 pub mod abis;
 mod allocator;
 

@@ -1,8 +1,5 @@
-use crate::{
-    abi::proto::massa::abi::v1::{Address, Amount, TransferCoinsRequest},
-    alloc::string::String,
-    allocator::EncodeLengthPrefixed,
-};
+use crate::{alloc::string::String, allocator::EncodeLengthPrefixed};
+use massa_proto::massa::abi::v1::{Address, Amount, TransferCoinsRequest};
 
 // use cfg_if::cfg_if;
 
@@ -61,7 +58,7 @@ pub fn transfer_coins(to_address: String, raw_amount: u64) {
     //         mock_transfer_coins(to_address, raw_amount)
     //     }
     //      else {
-            impl_transfer_coins(to_address, raw_amount)
+    impl_transfer_coins(to_address, raw_amount)
     //     }
     // }
 }
