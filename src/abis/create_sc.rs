@@ -1,5 +1,5 @@
 use massa_proto::massa::abi::v1::{
-    CreateScRequest, CreateScResponse, NativeAddress,
+    CreateScRequest, CreateScResponse, Address,
 };
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
 };
 use prost::Message;
 
-use super::Address;
+// use super::Address;
 
 // ****************************************************************************
 // Function from the abi used by the SC
@@ -24,7 +24,7 @@ massa_abi!(abi_create_sc);
 // Interface between the sdk and the SC i.e. seen by the user
 // Wrapped function to "hide" unsafe and manage serialize/deserialize of the
 // parameters
-fn impl_create_sc(bytecode: Vec<u8>) -> Result<NativeAddress, String> {
+fn impl_create_sc(bytecode: Vec<u8>) -> Result<Address, String> {
     // serialize the arguments with protobuf then length prefix it
     let arg_ptr = CreateScRequest { bytecode }.encode_length_prefixed();
 
@@ -37,7 +37,7 @@ fn impl_create_sc(bytecode: Vec<u8>) -> Result<NativeAddress, String> {
         return Err("Create SC response decode error".to_string())
     };
 
-    response.sc_address.ok_or("No address return".to_string())
+    response.address.ok_or("No address return".to_string())
 }
 
 pub fn create_sc(bytecode: Vec<u8>) -> Result<Address, String> {

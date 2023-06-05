@@ -1,9 +1,9 @@
 use massa_proto::massa::abi::v1::{
-    CallRequest, CallResponse, NativeAddress, NativeAmount,
+    CallRequest, CallResponse, Address, Amount,
 };
 
 use crate::{
-    abis::{Address, Amount},
+    // abis::{Address, Amount},
     alloc::{
         string::{String, ToString},
         vec::Vec,
@@ -24,16 +24,16 @@ massa_abi!(abi_call);
 // Wrapped function to "hide" unsafe and manage serialize/deserialize of the
 // parameters
 fn impl_call(
-    target_sc_address: NativeAddress,
-    target_function_name: String,
+    target_sc_address: Address,
+    function: String,
     function_arg: Vec<u8>,
-    call_coins: NativeAmount,
+    call_coins: Amount,
 ) -> Result<Vec<u8>, String> {
     // serialize the arguments with protobuf then length prefix it
     let arg_ptr = CallRequest {
-        target_sc_address: Some(target_sc_address),
-        target_function_name,
-        function_arg: function_arg,
+        address: Some(target_sc_address),
+        function,
+        arg: function_arg,
         call_coins: Some(call_coins),
     }
     .encode_length_prefixed();
@@ -45,7 +45,7 @@ fn impl_call(
 
     Ok(CallResponse::decode(ret.as_slice())
         .map_err(|_| "Create SC response decode error".to_string())?
-        .data)
+        .return_data)
 }
 
 pub fn call(

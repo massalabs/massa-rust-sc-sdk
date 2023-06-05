@@ -30,6 +30,7 @@ pub use alloc::{
     vec::Vec,
     vec,
 };
+pub use prost::Message;
 
 // pub use anyhow::{anyhow, Result};
 // ****************************************************************************

@@ -6,8 +6,8 @@ pub(crate) mod create_sc;
 pub(crate) mod echo;
 pub(crate) mod generate_event;
 pub(crate) mod log;
-pub(crate) mod native_address;
-pub(crate) mod native_amount;
+// pub(crate) mod native_address;
+// pub(crate) mod native_amount;
 pub(crate) mod transfer_coins;
 
 // re-export the functions from the abi
@@ -16,14 +16,14 @@ pub use call::call;
 pub use create_sc::create_sc;
 pub use echo::echo;
 pub use generate_event::generate_event;
-pub use native_address::native_address_to_string;
+// pub use native_address::native_address_to_string;
 pub use transfer_coins::transfer_coins;
 
 // re-export the types from the abi
-pub use massa_proto::massa::abi::v1::NativeAddress;
-pub use massa_proto::massa::abi::v1::NativeAmount;
-pub use native_address::Address;
-pub use native_amount::Amount;
+pub use massa_proto::massa::abi::v1::Address;
+pub use massa_proto::massa::abi::v1::Amount;
+// pub use native_address::Address;
+// pub use native_amount::Amount;
 
 
 #[macro_export]
