@@ -1,0 +1,1 @@
+Basis of what could become the Masse SDK to develop SC in Rust
