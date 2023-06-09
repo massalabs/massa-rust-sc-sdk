@@ -20,8 +20,8 @@ pub use native_address::native_address_to_string;
 pub use transfer_coins::transfer_coins;
 
 // re-export the types from the abi
-pub use massa_proto::massa::abi::v1::NativeAddress;
-pub use massa_proto::massa::abi::v1::NativeAmount;
+pub use massa_proto_rs::massa::abi::v1::NativeAddress;
+pub use massa_proto_rs::massa::abi::v1::NativeAmount;
 pub use native_address::Address;
 pub use native_amount::Amount;
 

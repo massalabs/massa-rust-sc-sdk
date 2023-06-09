@@ -1,5 +1,5 @@
 use alloc::string::ToString;
-use massa_proto::massa::abi::v1::{
+use massa_proto_rs::massa::abi::v1::{
     NativeAmount, NativeAmountFromStringRequest,
     NativeAmountFromStringResponse, NativeAmountToStringRequest,
     NativeAmountToStringResponse,

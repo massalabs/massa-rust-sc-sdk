@@ -1,4 +1,4 @@
-use massa_proto::massa::abi::v1::{TestRequest, TestResponse};
+use massa_proto_rs::massa::abi::v1::{TestRequest, TestResponse};
 
 use crate::{
     alloc::vec::Vec,

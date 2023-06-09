@@ -1,4 +1,4 @@
-use massa_proto::massa::abi::v1::{
+use massa_proto_rs::massa::abi::v1::{
     CreateScRequest, CreateScResponse, NativeAddress,
 };
 

@@ -1,4 +1,4 @@
-use massa_proto::massa::abi::v1::LogRequest;
+use massa_proto_rs::massa::abi::v1::LogRequest;
 
 use crate::{
     alloc::string::String,

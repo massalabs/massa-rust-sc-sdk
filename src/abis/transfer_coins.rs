@@ -1,5 +1,5 @@
 use crate::{allocator::EncodeLengthPrefixed, massa_abi};
-use massa_proto::massa::abi::v1::{
+use massa_proto_rs::massa::abi::v1::{
     NativeAddress, NativeAmount, TransferCoinsRequest,
 };
 
