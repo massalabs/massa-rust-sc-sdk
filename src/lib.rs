@@ -27,8 +27,8 @@ pub use alloc::{
     borrow::ToOwned,
     format,
     string::{String, ToString},
-    vec::Vec,
     vec,
+    vec::Vec,
 };
 
 // pub use anyhow::{anyhow, Result};

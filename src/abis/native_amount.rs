@@ -1,5 +1,7 @@
 use alloc::string::ToString;
 use massa_proto_rs::massa::abi::v1::{
+    native_amount_from_string_response,
+    native_amount_to_string_response::{self},
     NativeAmount, NativeAmountFromStringRequest,
     NativeAmountFromStringResponse, NativeAmountToStringRequest,
     NativeAmountToStringResponse,
@@ -35,45 +37,60 @@ massa_abi!(abi_native_amount_from_bytes); //
 // parameters
 
 pub(crate) fn native_amount_to_string(
-    amount_to_convert: NativeAmount,
+    to_convert: NativeAmount,
 ) -> Result<String, String> {
     {
         // serialize the arguments with protobuf
         let arg_ptr = NativeAmountToStringRequest {
-            amount_to_convert: Some(amount_to_convert),
+            to_convert: Some(to_convert),
         }
         .encode_length_prefixed();
 
         // call the function from the abi
         let resp_ptr = unsafe { abi_native_amount_to_string(arg_ptr) };
 
-        Ok(NativeAmountToStringResponse::decode(
+        let resp_result = NativeAmountToStringResponse::decode(
             get_parameters(resp_ptr).as_slice(),
         )
         .map_err(|_| "Error decoding NativeAmountToStringResponse".to_string())?
-        .converted_amount)
+        .resp_result
+        .ok_or_else(|| "NativeAmountToStringResult empty".to_string())?;
+
+        match resp_result {
+            native_amount_to_string_response::RespResult::ConvertedAmount(
+                amount,
+            ) => Ok(amount),
+            native_amount_to_string_response::RespResult::Error(err) => {
+                Err(err)
+            }
+        }
     }
 }
 
 pub(crate) fn native_amount_from_string(
-    amount_to_convert: String,
+    to_convert: String,
 ) -> Result<NativeAmount, String> {
     // serialize the arguments with protobuf
-    let arg_ptr = NativeAmountFromStringRequest { amount_to_convert }
-        .encode_length_prefixed();
+    let arg_ptr =
+        NativeAmountFromStringRequest { to_convert }.encode_length_prefixed();
 
     // call the function from the abi
     let resp_ptr = unsafe { abi_native_amount_from_string(arg_ptr) };
 
     // deserialize the returned value with protobuf
-    let resp = NativeAmountFromStringResponse::decode(
+    let resp_result = NativeAmountFromStringResponse::decode(
         get_parameters(resp_ptr).as_slice(),
     )
-    .map_err(|_| "Error decoding NativeAmountFromStringResponse".to_string())?;
+    .map_err(|_| "Error decoding NativeAmountFromStringResponse".to_string())?
+    .resp_result
+    .ok_or_else(|| "NativeAmountFromStringResult empty".to_string())?;
 
-    Ok(resp
-        .converted_amount
-        .ok_or("Error converting string to NativeAmount".to_string())?)
+    match resp_result {
+        native_amount_from_string_response::RespResult::ConvertedAmount(
+            amount,
+        ) => Ok(amount),
+        native_amount_from_string_response::RespResult::Error(err) => Err(err),
+    }
 }
 
 #[derive(Clone)]

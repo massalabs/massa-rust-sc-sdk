@@ -1,9 +1,6 @@
 use massa_proto_rs::massa::abi::v1::LogRequest;
 
-use crate::{
-    alloc::string::String,
-    allocator::EncodeLengthPrefixed,
-};
+use crate::{alloc::string::String, allocator::EncodeLengthPrefixed};
 
 // use cfg_if::cfg_if;
 
@@ -58,7 +55,7 @@ pub fn log(arg: String) {
     //         mock_log(arg)
     //     }
     //      else {
-            impl_log(arg)
+    impl_log(arg)
     //     }
     // }
 }

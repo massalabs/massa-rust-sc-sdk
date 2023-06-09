@@ -25,7 +25,6 @@ pub use massa_proto_rs::massa::abi::v1::NativeAmount;
 pub use native_address::Address;
 pub use native_amount::Amount;
 
-
 #[macro_export]
 macro_rules! massa_abi {
     ($func:ident) => {
@@ -35,4 +34,3 @@ macro_rules! massa_abi {
         }
     };
 }
-

@@ -1,6 +1,7 @@
 use alloc::string::ToString;
 use massa_proto_rs::massa::abi::v1::{
-    NativeAddress, NativeAddressToStringRequest, NativeAddressToStringResponse,
+    native_address_to_string_response, NativeAddress,
+    NativeAddressToStringRequest, NativeAddressToStringResponse,
 };
 
 use crate::{
@@ -30,11 +31,19 @@ pub fn native_address_to_string(
     let resp_ptr = unsafe { abi_native_address_to_string(arg_ptr) };
 
     // deserialize the returned value with protobuf
-    Ok(NativeAddressToStringResponse::decode(
+    let resp_result = NativeAddressToStringResponse::decode(
         get_parameters(resp_ptr).as_slice(),
     )
     .map_err(|_| "Error decoding NativeAddressToStringResponse".to_string())?
-    .converted_address)
+    .resp_result
+    .ok_or_else(|| "NativeAddressToStringResponse empty".to_string())?;
+
+    match resp_result {
+        native_address_to_string_response::RespResult::Value(addr) => Ok(addr),
+        native_address_to_string_response::RespResult::ErrorMessage(err) => {
+            Err(err)
+        }
+    }
 }
 
 #[derive(Clone)]

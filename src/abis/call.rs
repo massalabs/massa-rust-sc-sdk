@@ -33,7 +33,7 @@ fn impl_call(
     let arg_ptr = CallRequest {
         target_sc_address: Some(target_sc_address),
         target_function_name,
-        function_arg: function_arg,
+        function_arg,
         call_coins: Some(call_coins),
     }
     .encode_length_prefixed();

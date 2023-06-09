@@ -5,7 +5,6 @@ use massa_proto_rs::massa::abi::v1::{
 
 use super::{Address, Amount};
 
-
 // ****************************************************************************
 // Function from the abi used by the SC
 

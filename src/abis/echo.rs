@@ -1,9 +1,7 @@
 use massa_proto_rs::massa::abi::v1::{TestRequest, TestResponse};
 
 use crate::{
-    alloc::vec::Vec,
-    allocator::get_parameters,
-    allocator::EncodeLengthPrefixed,
+    alloc::vec::Vec, allocator::get_parameters, allocator::EncodeLengthPrefixed,
 };
 // use cfg_if::cfg_if;
 use prost::Message;
@@ -57,14 +55,16 @@ fn impl_echo(arg: Vec<u8>) -> Vec<u8> {
 //         fn mock_echo(arg: Vec<u8>) -> Vec<u8> {
 //             dbg!("mocked echo");
 
-//             let arg_ptr = TestRequest {message_in: arg }.encode_length_prefixed();
+//             let arg_ptr = TestRequest {message_in: arg
+// }.encode_length_prefixed();
 
 //             // deserialize the returned value with protobuf
 //             let resp_bytes: Vec<u8> = get_parameters(arg_ptr);
 //             // drop the first 4 bytes as they are the length of the message
 //             let resp_bytes: Vec<u8> = resp_bytes[4..].to_vec();
 
-//             let resp: TestResponse = TestResponse::decode(resp_bytes.as_slice()).unwrap();
+//             let resp: TestResponse =
+// TestResponse::decode(resp_bytes.as_slice()).unwrap();
 
 //             resp.message_out
 //         }
@@ -77,7 +77,7 @@ pub fn echo(arg: Vec<u8>) -> Vec<u8> {
     //         mock_echo(arg)
     //     }
     //      else {
-            impl_echo(arg)
+    impl_echo(arg)
     //     }
     // }
 }
