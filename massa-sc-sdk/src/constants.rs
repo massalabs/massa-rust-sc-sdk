@@ -40,9 +40,14 @@ pub const MAX_DATASTORE_KEY_LENGTH: usize = 255;
 /// Maximum number of threads (a slot is a `(period, thread)` pair).
 pub const THREAD_COUNT: u8 = 32;
 
-/// Ledger cost of one byte of storage, in nanoMAS (0.0001 MAS).
+/// Ledger cost of one byte of storage on Massa networks, in nanoMAS (0.0001 MAS).
+/// C-Layer networks charge [`CLAYER_STORAGE_BYTE_COST`] instead.
 pub const STORAGE_BYTE_COST: u64 = 100_000;
-/// Ledger cost of creating a new address entry, in nanoMAS (0.001 MAS).
+/// Ledger cost of creating a new address entry on Massa networks, in nanoMAS (0.001 MAS).
 pub const NEW_LEDGER_ENTRY_COST: u64 = 1_000_000;
+/// Ledger cost of one byte of storage on C-Layer networks, in nanoMAS.
+pub const CLAYER_STORAGE_BYTE_COST: u64 = 1;
+/// Ledger cost of creating a new address entry on C-Layer networks, in nanoMAS.
+pub const CLAYER_NEW_LEDGER_ENTRY_COST: u64 = 10;
 /// Base size accounted for every datastore entry, in bytes.
 pub const DATASTORE_ENTRY_BASE_SIZE: usize = 4;
