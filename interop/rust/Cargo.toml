@@ -1,0 +1,17 @@
+# Rust fixtures of the Rust <-> AssemblyScript interoperability suite.
+# Standalone workspace: built with `cargo massa build` (see ../build.sh).
+[workspace]
+resolver = "2"
+members = ["rs-echo", "rs-caller", "rs-storage", "rs-token", "rs-nft", "rs-multi"]
+
+[workspace.dependencies]
+massa-sc-sdk = { path = "../../massa-sc-sdk" }
+massa-sc-standards = { path = "../../massa-sc-standards" }
+
+[profile.release]
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+overflow-checks = true

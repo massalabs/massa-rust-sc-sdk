@@ -95,6 +95,7 @@ pub fn create_sc(bytecode: &[u8]) -> String {
     with_vm(|vm| vm.create_sc(bytecode))
 }
 
+/// Bytecode of the current contract.
 pub fn get_bytecode() -> Vec<u8> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -104,6 +105,7 @@ pub fn get_bytecode() -> Vec<u8> {
     with_vm(|vm| vm.get_bytecode())
 }
 
+/// Bytecode of the contract at `address`; aborts when the address does not exist.
 pub fn get_bytecode_of(address: &str) -> Vec<u8> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -113,6 +115,7 @@ pub fn get_bytecode_of(address: &str) -> Vec<u8> {
     with_vm(|vm| vm.get_bytecode_of(address))
 }
 
+/// Replace the bytecode of the current contract.
 pub fn set_bytecode(bytecode: &[u8]) {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -122,6 +125,7 @@ pub fn set_bytecode(bytecode: &[u8]) {
     with_vm(|vm| vm.set_bytecode(bytecode))
 }
 
+/// Replace the bytecode of `address` (requires write access).
 pub fn set_bytecode_of(address: &str, bytecode: &[u8]) {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -133,6 +137,7 @@ pub fn set_bytecode_of(address: &str, bytecode: &[u8]) {
     with_vm(|vm| vm.set_bytecode_of(address, bytecode))
 }
 
+/// `true` when the contract at `address` exports `function`.
 pub fn function_exists(address: &str, function: &str) -> bool {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -144,6 +149,7 @@ pub fn function_exists(address: &str, function: &str) -> bool {
     with_vm(|vm| vm.function_exists(address, function))
 }
 
+/// `true` when the caller has write access to the current address (deployment).
 pub fn caller_has_write_access() -> bool {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -153,6 +159,7 @@ pub fn caller_has_write_access() -> bool {
     with_vm(|vm| vm.caller_has_write_access())
 }
 
+/// Gas still available to the current execution.
 pub fn remaining_gas() -> u64 {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -166,6 +173,7 @@ pub fn remaining_gas() -> u64 {
 // datastore
 // ---------------------------------------------------------------------------
 
+/// Set `key` to `value` in the current contract datastore.
 pub fn set(key: &[u8], value: &[u8]) {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -177,6 +185,7 @@ pub fn set(key: &[u8], value: &[u8]) {
     with_vm(|vm| vm.set(key, value))
 }
 
+/// Set `key` to `value` in the datastore of `address` (requires write access).
 pub fn set_of(address: &str, key: &[u8], value: &[u8]) {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -189,6 +198,7 @@ pub fn set_of(address: &str, key: &[u8], value: &[u8]) {
     with_vm(|vm| vm.set_of(address, key, value))
 }
 
+/// Value of `key` in the current contract datastore; aborts when missing.
 pub fn get(key: &[u8]) -> Vec<u8> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -198,6 +208,7 @@ pub fn get(key: &[u8]) -> Vec<u8> {
     with_vm(|vm| vm.get(key))
 }
 
+/// Value of `key` in the datastore of `address`; aborts when missing.
 pub fn get_of(address: &str, key: &[u8]) -> Vec<u8> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -209,6 +220,7 @@ pub fn get_of(address: &str, key: &[u8]) -> Vec<u8> {
     with_vm(|vm| vm.get_of(address, key))
 }
 
+/// Delete `key` from the current contract datastore; aborts when missing.
 pub fn del(key: &[u8]) {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -218,6 +230,7 @@ pub fn del(key: &[u8]) {
     with_vm(|vm| vm.del(key))
 }
 
+/// Delete `key` from the datastore of `address` (requires write access).
 pub fn delete_of(address: &str, key: &[u8]) {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -229,6 +242,7 @@ pub fn delete_of(address: &str, key: &[u8]) {
     with_vm(|vm| vm.delete_of(address, key))
 }
 
+/// Append `value` to the entry `key`; aborts when missing.
 pub fn append(key: &[u8], value: &[u8]) {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -240,6 +254,7 @@ pub fn append(key: &[u8], value: &[u8]) {
     with_vm(|vm| vm.append(key, value))
 }
 
+/// Append `value` to the entry `key` of `address` (requires write access).
 pub fn append_of(address: &str, key: &[u8], value: &[u8]) {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -252,6 +267,7 @@ pub fn append_of(address: &str, key: &[u8], value: &[u8]) {
     with_vm(|vm| vm.append_of(address, key, value))
 }
 
+/// `true` when `key` exists in the current contract datastore.
 pub fn has(key: &[u8]) -> bool {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -261,6 +277,7 @@ pub fn has(key: &[u8]) -> bool {
     with_vm(|vm| vm.has(key))
 }
 
+/// `true` when `key` exists in the datastore of `address`.
 pub fn has_of(address: &str, key: &[u8]) -> bool {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -285,6 +302,7 @@ pub fn get_keys(prefix: &[u8]) -> Vec<Vec<u8>> {
     with_vm(|vm| vm.get_keys(prefix))
 }
 
+/// Keys of the datastore of `address` starting with `prefix`; same limits as [`get_keys`].
 pub fn get_keys_of(address: &str, prefix: &[u8]) -> Vec<Vec<u8>> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -331,6 +349,7 @@ pub fn get_keys_of_page(address: &str, prefix: &[u8], start_key: &[u8], count: u
 // context
 // ---------------------------------------------------------------------------
 
+/// Addresses the current execution may write to (the current one and those it created).
 pub fn owned_addresses() -> Vec<String> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -340,6 +359,7 @@ pub fn owned_addresses() -> Vec<String> {
     with_vm(|vm| vm.owned_addresses())
 }
 
+/// Call stack, originator first, current contract last.
 pub fn call_stack() -> Vec<String> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -364,6 +384,7 @@ pub fn call_stack_from_top(n: usize) -> Option<String> {
     })
 }
 
+/// Coins (nanoMAS) sent along with the current call.
 pub fn call_coins() -> u64 {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -383,6 +404,7 @@ pub fn time() -> u64 {
     with_vm(|vm| vm.time())
 }
 
+/// Period of the current slot.
 pub fn current_period() -> u64 {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -392,6 +414,7 @@ pub fn current_period() -> u64 {
     with_vm(|vm| vm.current_period())
 }
 
+/// Thread of the current slot.
 pub fn current_thread() -> u8 {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -411,6 +434,7 @@ pub fn origin_operation_id() -> String {
     with_vm(|vm| vm.origin_operation_id())
 }
 
+/// Chain id of the network.
 pub fn chain_id() -> u64 {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -434,6 +458,7 @@ pub fn unsafe_random() -> i64 {
 // coins
 // ---------------------------------------------------------------------------
 
+/// Send `amount` nanoMAS from the current contract to `to`.
 pub fn transfer_coins(to: &str, amount: u64) {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -443,6 +468,7 @@ pub fn transfer_coins(to: &str, amount: u64) {
     with_vm(|vm| vm.transfer_coins(to, amount))
 }
 
+/// Send `amount` nanoMAS from `from` to `to` (requires write access to `from`).
 pub fn transfer_coins_of(from: &str, to: &str, amount: u64) {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -454,6 +480,7 @@ pub fn transfer_coins_of(from: &str, to: &str, amount: u64) {
     with_vm(|vm| vm.transfer_coins_of(from, to, amount))
 }
 
+/// Balance of the current contract, in nanoMAS.
 pub fn balance() -> u64 {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -463,6 +490,7 @@ pub fn balance() -> u64 {
     with_vm(|vm| vm.balance())
 }
 
+/// Balance of `address` in nanoMAS (0 when it does not exist).
 pub fn balance_of(address: &str) -> u64 {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -476,6 +504,7 @@ pub fn balance_of(address: &str) -> u64 {
 // crypto / addresses
 // ---------------------------------------------------------------------------
 
+/// BLAKE3 hash.
 pub fn blake3(data: &[u8]) -> [u8; 32] {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -485,6 +514,7 @@ pub fn blake3(data: &[u8]) -> [u8; 32] {
     with_vm(|vm| vm.blake3(data))
 }
 
+/// SHA-256 hash.
 pub fn sha256(data: &[u8]) -> [u8; 32] {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -494,6 +524,7 @@ pub fn sha256(data: &[u8]) -> [u8; 32] {
     with_vm(|vm| vm.sha256(data))
 }
 
+/// Keccak-256 hash.
 pub fn keccak256(data: &[u8]) -> [u8; 32] {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -526,6 +557,7 @@ pub fn is_signature_valid(data: &str, signature: &str, public_key: &str) -> bool
     with_vm(|vm| vm.is_signature_valid(data, signature, public_key))
 }
 
+/// Verify a secp256k1 signature (65 bytes `r||s||v`) against a 64-byte raw public key.
 pub fn is_evm_signature_valid(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -538,6 +570,7 @@ pub fn is_evm_signature_valid(data: &[u8], signature: &[u8], public_key: &[u8]) 
     with_vm(|vm| vm.is_evm_signature_valid(data, signature, public_key))
 }
 
+/// 20-byte Ethereum address of a 64-byte raw public key.
 pub fn evm_get_address_from_pubkey(public_key: &[u8]) -> Vec<u8> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -547,6 +580,7 @@ pub fn evm_get_address_from_pubkey(public_key: &[u8]) -> Vec<u8> {
     with_vm(|vm| vm.evm_get_address_from_pubkey(public_key))
 }
 
+/// Recover the 64-byte public key from a 32-byte hash and a 65-byte signature.
 pub fn evm_get_pubkey_from_signature(hash: &[u8], signature: &[u8]) -> Vec<u8> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -558,6 +592,7 @@ pub fn evm_get_pubkey_from_signature(hash: &[u8], signature: &[u8]) -> Vec<u8> {
     with_vm(|vm| vm.evm_get_pubkey_from_signature(hash, signature))
 }
 
+/// `true` for a user address (`AU...`), `false` for a contract.
 pub fn is_address_eoa(address: &str) -> bool {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -567,6 +602,7 @@ pub fn is_address_eoa(address: &str) -> bool {
     with_vm(|vm| vm.is_address_eoa(address))
 }
 
+/// Address derived from a base58check public key.
 pub fn public_key_to_address(public_key: &str) -> String {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -576,6 +612,7 @@ pub fn public_key_to_address(public_key: &str) -> String {
     with_vm(|vm| vm.public_key_to_address(public_key))
 }
 
+/// `true` when `address` is well formed.
 pub fn validate_address(address: &str) -> bool {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -589,6 +626,7 @@ pub fn validate_address(address: &str) -> bool {
 // operation datastore
 // ---------------------------------------------------------------------------
 
+/// All keys of the operation datastore.
 pub fn get_op_keys() -> Vec<Vec<u8>> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -598,6 +636,7 @@ pub fn get_op_keys() -> Vec<Vec<u8>> {
     with_vm(|vm| vm.get_op_keys(&[]))
 }
 
+/// Keys of the operation datastore starting with `prefix`.
 pub fn get_op_keys_prefix(prefix: &[u8]) -> Vec<Vec<u8>> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -607,6 +646,7 @@ pub fn get_op_keys_prefix(prefix: &[u8]) -> Vec<Vec<u8>> {
     with_vm(|vm| vm.get_op_keys(prefix))
 }
 
+/// `true` when `key` exists in the operation datastore.
 pub fn has_op_key(key: &[u8]) -> bool {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -617,6 +657,7 @@ pub fn has_op_key(key: &[u8]) -> bool {
     with_vm(|vm| vm.has_op_key(key))
 }
 
+/// Value of `key` in the operation datastore; aborts when missing.
 pub fn get_op_data(key: &[u8]) -> Vec<u8> {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -630,6 +671,7 @@ pub fn get_op_data(key: &[u8]) -> Vec<u8> {
 // asynchronous messages & deferred calls
 // ---------------------------------------------------------------------------
 
+/// Send an asynchronous message (see [`crate::contract::async_call`]).
 #[allow(clippy::too_many_arguments)]
 pub fn send_message(
     target_address: &str,
@@ -725,6 +767,7 @@ pub fn deferred_call_register(
     with_vm(|vm| vm.deferred_call_register(target_address, target_function, slot, max_gas, params, coins))
 }
 
+/// `true` while the deferred call `id` is scheduled.
 pub fn deferred_call_exists(id: &str) -> bool {
     #[cfg(target_arch = "wasm32")]
     unsafe {
@@ -734,6 +777,7 @@ pub fn deferred_call_exists(id: &str) -> bool {
     with_vm(|vm| vm.deferred_call_exists(id))
 }
 
+/// Cancel the deferred call `id` (coins are refunded).
 pub fn deferred_call_cancel(id: &str) {
     #[cfg(target_arch = "wasm32")]
     unsafe {

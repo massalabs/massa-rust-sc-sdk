@@ -3,9 +3,10 @@
 //!
 //! Keys and values are plain bytes: anything `AsRef<[u8]>` works as a key or
 //! value (`&str`, `String`, `&[u8]`, `Vec<u8>`, `[u8; N]`, [`Args`], ...).
-//! Typed values can be stored through [`Args`] (`set(KEY, Args::new().add(v))`)
-//! or with [`set_value`] / [`get_value`], which use the [`StorageValue`]
-//! encoding (integers little-endian, strings raw UTF-8, structs serialized).
+//! Typed values go through [`set_value`] / [`get_value`] / [`try_get_value`],
+//! which use the [`StorageValue`] encoding (integers little-endian, strings
+//! raw UTF-8, `#[derive(Serializable)]` structures serialized), or through
+//! [`Args`] (`set(KEY, Args::new().add(v))`).
 //!
 //! Every datastore write is paid in coins by the contract (storage cost), and
 //! every failed read (`get` of a missing key) aborts the execution: use
@@ -18,7 +19,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::args::{Args, ArgsDecode, ArgsEncode, Serializable, U256};
+use crate::args::{Args, ArgsDecode, ArgsEncode, U256};
 use crate::constants::MAX_DATASTORE_KEYS_PAGE;
 use crate::{env, Address};
 
@@ -126,13 +127,121 @@ pub fn append_of(address: &Address, key: impl AsRef<[u8]>, value: impl AsRef<[u8
 // typed helpers
 // ---------------------------------------------------------------------------
 
-/// Value encoding used by [`set_value`], [`get_value`] and
-/// [`crate::collections::PersistentMap`]: compact, with no length prefix for
-/// strings and byte strings (same layout as the AssemblyScript helpers
-/// `Storage.set<string>`, `PersistentMap`, `u64ToBytes`, `boolToByte`...).
+/// Typed values for the datastore, with the two encodings the AssemblyScript
+/// SDK uses:
+///
+/// * [`to_storage`](Self::to_storage) / [`from_storage`](Self::from_storage):
+///   the raw idiom of `Storage.set` (`stringToBytes`, `u64ToBytes`,
+///   `boolToByte`, `serialize()`...): strings and byte strings raw, integers
+///   and floats at their natural width, little-endian, `U256` 32 bytes,
+///   `bool` one byte, [`Serializable`] structures as their [`Args`] encoding.
+///   Used by [`set_value`] / [`get_value`].
+/// * [`to_map_value`](Self::to_map_value) / [`from_map_value`](Self::from_map_value):
+///   the `PersistentMap` encoding, where every integer and float takes
+///   8 bytes. Used by [`crate::collections::PersistentMap`].
+///
+/// `#[derive(Serializable)]` implements it for your structures.
 pub trait StorageValue: Sized {
+    /// Raw encoding (`Storage.set` idiom).
     fn to_storage(&self) -> Vec<u8>;
+    /// Decode the raw encoding; `None` when the bytes are not a valid value.
     fn from_storage(bytes: &[u8]) -> Option<Self>;
+    /// `PersistentMap` encoding; the raw encoding unless overridden.
+    fn to_map_value(&self) -> Vec<u8> {
+        self.to_storage()
+    }
+    /// Decode the `PersistentMap` encoding.
+    fn from_map_value(bytes: &[u8]) -> Option<Self> {
+        Self::from_storage(bytes)
+    }
+}
+
+macro_rules! storage_value_int {
+    ($($t:ty),* $(,)?) => {$(
+        impl StorageValue for $t {
+            #[inline]
+            fn to_storage(&self) -> Vec<u8> {
+                self.to_le_bytes().to_vec()
+            }
+            #[inline]
+            fn from_storage(bytes: &[u8]) -> Option<Self> {
+                bytes.try_into().ok().map(<$t>::from_le_bytes)
+            }
+            // The AssemblyScript PersistentMap stores every integer as i64.
+            #[inline]
+            fn to_map_value(&self) -> Vec<u8> {
+                (*self as i64).to_le_bytes().to_vec()
+            }
+            #[inline]
+            fn from_map_value(bytes: &[u8]) -> Option<Self> {
+                let v = i64::from_le_bytes(bytes.try_into().ok()?);
+                <$t>::try_from(v).ok()
+            }
+        }
+    )*};
+}
+storage_value_int!(u8, i8, u16, i16, u32, i32, i64);
+
+impl StorageValue for u64 {
+    #[inline]
+    fn to_storage(&self) -> Vec<u8> {
+        self.to_le_bytes().to_vec()
+    }
+    #[inline]
+    fn from_storage(bytes: &[u8]) -> Option<Self> {
+        bytes.try_into().ok().map(u64::from_le_bytes)
+    }
+    // Same 8 bytes, reinterpreted (`i64ToBytes(value as i64)` in AssemblyScript).
+    #[inline]
+    fn from_map_value(bytes: &[u8]) -> Option<Self> {
+        Self::from_storage(bytes)
+    }
+}
+
+macro_rules! storage_value_float {
+    ($($t:ty),* $(,)?) => {$(
+        impl StorageValue for $t {
+            #[inline]
+            fn to_storage(&self) -> Vec<u8> {
+                self.to_le_bytes().to_vec()
+            }
+            #[inline]
+            fn from_storage(bytes: &[u8]) -> Option<Self> {
+                bytes.try_into().ok().map(<$t>::from_le_bytes)
+            }
+            // The AssemblyScript PersistentMap stores every float as f64.
+            #[inline]
+            fn to_map_value(&self) -> Vec<u8> {
+                (*self as f64).to_le_bytes().to_vec()
+            }
+            #[inline]
+            fn from_map_value(bytes: &[u8]) -> Option<Self> {
+                Some(f64::from_le_bytes(bytes.try_into().ok()?) as $t)
+            }
+        }
+    )*};
+}
+storage_value_float!(f32, f64);
+
+impl StorageValue for bool {
+    #[inline]
+    fn to_storage(&self) -> Vec<u8> {
+        alloc::vec![*self as u8]
+    }
+    #[inline]
+    fn from_storage(bytes: &[u8]) -> Option<Self> {
+        Some(bytes.first()? != &0)
+    }
+    // `isInteger<bool>()` holds in AssemblyScript: its PersistentMap stores
+    // booleans as i64 too.
+    #[inline]
+    fn to_map_value(&self) -> Vec<u8> {
+        (*self as i64).to_le_bytes().to_vec()
+    }
+    #[inline]
+    fn from_map_value(bytes: &[u8]) -> Option<Self> {
+        Some(i64::from_le_bytes(bytes.try_into().ok()?) != 0)
+    }
 }
 
 macro_rules! storage_value_via_args {
@@ -145,7 +254,9 @@ macro_rules! storage_value_via_args {
         }
     )*};
 }
-storage_value_via_args!(bool, u8, i8, u16, i16, u32, i32, u64, i64, u128, i128, f32, f64, U256);
+// 128/256-bit integers keep their Args encoding in both contexts (the
+// AssemblyScript PersistentMap has no usable encoding for them).
+storage_value_via_args!(u128, i128, U256);
 
 impl StorageValue for String {
     fn to_storage(&self) -> Vec<u8> {
@@ -205,27 +316,6 @@ pub fn try_get_value<V: StorageValue>(key: impl AsRef<[u8]>) -> Option<V> {
     try_get(key).and_then(|b| V::from_storage(&b))
 }
 
-/// Store a [`Serializable`] structure at `key` (its [`Args`] encoding).
-#[inline]
-pub fn set_serializable<T: Serializable>(key: impl AsRef<[u8]>, value: &T) {
-    env::set(key.as_ref(), &value.serialize())
-}
-
-/// Read a [`Serializable`] structure at `key`; aborts when missing or invalid.
-#[inline]
-pub fn get_serializable<T: Serializable>(key: impl AsRef<[u8]>) -> T {
-    match T::deserialize(&env::get(key.as_ref())) {
-        Ok(v) => v,
-        Err(e) => crate::abort(&alloc::format!("invalid stored value: {e}")),
-    }
-}
-
-/// Read a [`Serializable`] structure at `key`, `None` when missing or invalid.
-#[inline]
-pub fn try_get_serializable<T: Serializable>(key: impl AsRef<[u8]>) -> Option<T> {
-    try_get(key).and_then(|b| T::deserialize(&b).ok())
-}
-
 // ---------------------------------------------------------------------------
 // keys
 // ---------------------------------------------------------------------------
@@ -259,14 +349,19 @@ pub fn get_keys_of(address: &Address, prefix: impl AsRef<[u8]>) -> Vec<Vec<u8>> 
 /// resume later. Available from execution version 2 (MIP-0002): a contract
 /// importing it cannot be instantiated on a node where MIP-0002 is not active.
 ///
-/// ```ignore
+/// ```
+/// # use massa_sc_sdk::{constants::MAX_DATASTORE_KEYS_PAGE, mock, storage};
+/// # mock::reset();
+/// # for i in 0..3 { storage::set(format!("user:{i}"), [1]); }
 /// let mut cursor = Vec::new();
+/// let mut visited = 0;
 /// loop {
 ///     let page = storage::get_keys_page(b"user:", &cursor, MAX_DATASTORE_KEYS_PAGE);
-///     for key in &page { /* ... */ }
+///     visited += page.len();
 ///     if page.len() < MAX_DATASTORE_KEYS_PAGE as usize { break; }
 ///     cursor = page.last().unwrap().clone();
 /// }
+/// assert_eq!(visited, 3);
 /// ```
 #[inline]
 pub fn get_keys_page(prefix: impl AsRef<[u8]>, start_key: impl AsRef<[u8]>, count: u32) -> Vec<Vec<u8>> {
@@ -335,6 +430,21 @@ mod tests {
         assert_eq!(get("s"), b"hey");
         assert_eq!(try_get_value::<String>("s").as_deref(), Some("hey"));
         assert_eq!(try_get_value::<u64>("missing"), None);
+    }
+
+    #[test]
+    fn map_encoding_matches_assemblyscript_persistent_map() {
+        // integers and floats: 8 bytes; the rest unchanged
+        assert_eq!(7u32.to_map_value(), 7i64.to_le_bytes());
+        assert_eq!(u32::from_map_value(&7i64.to_le_bytes()), Some(7));
+        assert_eq!(u32::from_map_value(&(-1i64).to_le_bytes()), None);
+        assert_eq!(u64::MAX.to_map_value(), (-1i64).to_le_bytes());
+        assert_eq!(u64::from_map_value(&(-1i64).to_le_bytes()), Some(u64::MAX));
+        assert_eq!(1.5f32.to_map_value(), 1.5f64.to_le_bytes());
+        assert_eq!(true.to_map_value(), 1i64.to_le_bytes());
+        assert_eq!(bool::from_map_value(&1i64.to_le_bytes()), Some(true));
+        assert_eq!(String::from("v").to_map_value(), b"v");
+        assert_eq!(7u32.to_storage(), 7u32.to_le_bytes());
     }
 
     #[test]

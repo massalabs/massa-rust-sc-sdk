@@ -12,8 +12,11 @@ use massa_sc_sdk::prelude::*;
 
 use crate::ownership;
 
+/// Prefix of the datastore keys holding the members of each role.
 pub const ROLES_KEY: &str = "_ROLES";
+/// Event emitted when a role is granted: `ROLE_GRANTED_EVENT:<role>,<account>`.
 pub const ROLE_GRANTED_EVENT: &str = "ROLE_GRANTED_EVENT";
+/// Event emitted when a role is revoked: `ROLE_REVOKED_EVENT:<role>,<account>`.
 pub const ROLE_REVOKED_EVENT: &str = "ROLE_REVOKED_EVENT";
 
 fn role_key(role: &str) -> Vec<u8> {

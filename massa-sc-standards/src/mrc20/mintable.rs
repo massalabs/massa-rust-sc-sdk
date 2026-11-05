@@ -5,6 +5,7 @@ use massa_sc_sdk::prelude::*;
 use super::internals::{balance, set_balance, set_total_supply, total_supply};
 use crate::ownership;
 
+/// Event emitted by mints.
 pub const MINT_EVENT: &str = "MINT SUCCESS";
 
 /// Credit `amount` new tokens to `recipient` (no access check, no event).
@@ -13,18 +14,21 @@ pub fn mint(recipient: &Address, amount: U256) {
     increase_balance(recipient, amount);
 }
 
+/// Add `amount` to the balance of `recipient`; aborts on overflow.
 pub fn increase_balance(recipient: &Address, amount: U256) {
     let old = balance(recipient);
     let new = old.checked_add(amount).expect("Requested mint amount causes an overflow");
     set_balance(recipient, new);
 }
 
+/// Add `amount` to the total supply; aborts on overflow.
 pub fn increase_total_supply(amount: U256) {
     let old = total_supply();
     let new = old.checked_add(amount).expect("Requested mint amount causes an overflow");
     set_total_supply(new);
 }
 
+/// Entry points taking serialized arguments.
 pub mod entrypoints {
     use super::*;
 

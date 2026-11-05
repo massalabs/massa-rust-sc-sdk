@@ -6,7 +6,9 @@
 
 use massa_sc_sdk::prelude::*;
 
+/// Datastore key holding the owner address (raw string).
 pub const OWNER_KEY: &str = "OWNER";
+/// Event emitted when the owner changes: `CHANGE_OWNER:<address>`.
 pub const CHANGE_OWNER_EVENT_NAME: &str = "CHANGE_OWNER";
 
 /// Current owner, `None` when not set.

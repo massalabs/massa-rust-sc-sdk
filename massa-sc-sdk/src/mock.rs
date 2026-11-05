@@ -6,16 +6,23 @@
 //! State is thread-local: each test gets its own VM. Call [`reset`] at the
 //! start of a test, then shape the context with the `set_*` helpers.
 //!
-//! ```ignore
+//! ```
+//! use massa_sc_sdk::prelude::*;
 //! use massa_sc_sdk::mock;
 //!
-//! #[test]
-//! fn constructor_sets_owner() {
-//!     mock::reset();
-//!     mock::set_deploy_context(None);          // caller has write access
-//!     constructor(Args::new().add("MyToken"));
-//!     assert_eq!(mock::events(), vec!["OWNER_SET"]);
+//! #[export]
+//! pub fn constructor(mut args: Args) {
+//!     assert!(context::is_deploying_contract());
+//!     let owner: Address = args.must_next("owner");
+//!     storage::set_value("owner", &owner);
+//!     generate_event("OWNER_SET");
 //! }
+//!
+//! mock::reset();
+//! mock::set_deploy_context(None);          // the caller has write access
+//! constructor(Args::new().add(context::caller()));
+//! assert_eq!(mock::events(), vec!["OWNER_SET"]);
+//! assert_eq!(storage::get_value::<Address>("owner"), context::caller());
 //! ```
 
 extern crate std;
@@ -35,47 +42,75 @@ pub const DEFAULT_CALLEE: &str = "AS12BqZEQ6sByhRLyEuf0YbQmcF2PsDdkNNG1akBJu9Xcj
 /// Initial balance of the two default addresses: 100 MAS.
 pub const DEFAULT_BALANCE: u64 = 100 * crate::constants::ONE_MAS;
 
+/// An account of the mock ledger.
 #[derive(Clone, Debug, Default)]
 pub struct MockAccount {
+    /// Balance in nanoMAS.
     pub balance: u64,
+    /// Deployed bytecode (empty for user accounts).
     pub bytecode: Vec<u8>,
+    /// Key/value datastore.
     pub datastore: BTreeMap<Vec<u8>, Vec<u8>>,
 }
 
 /// A call made by the contract under test to another contract.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RecordedCall {
+    /// Target contract.
     pub address: String,
+    /// Called function.
     pub function: String,
+    /// Serialized arguments.
     pub args: Vec<u8>,
+    /// Coins sent with the call.
     pub coins: u64,
     /// `false` for `local_call`.
     pub remote: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// An asynchronous message sent with [`crate::contract::async_call`].
 pub struct AsyncMessage {
+    /// Target contract.
     pub address: String,
+    /// Target function.
     pub function: String,
+    /// First slot of the validity window.
     pub validity_start: (u64, u8),
+    /// Last slot of the validity window.
     pub validity_end: (u64, u8),
+    /// Gas allocated to the execution.
     pub max_gas: u64,
+    /// Priority fee.
     pub fee: u64,
+    /// Coins transferred with the message.
     pub coins: u64,
+    /// Serialized arguments.
     pub args: Vec<u8>,
+    /// Trigger address (empty = none).
     pub filter_address: String,
+    /// Trigger datastore key (empty = any change).
     pub filter_key: Vec<u8>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+/// A deferred call booked with [`crate::deferred_calls::register`].
 pub struct DeferredCall {
+    /// Id returned at registration.
     pub id: String,
+    /// Target contract.
     pub address: String,
+    /// Target function.
     pub function: String,
+    /// Booked slot.
     pub slot: (u64, u8),
+    /// Gas allocated to the execution.
     pub max_gas: u64,
+    /// Serialized arguments.
     pub args: Vec<u8>,
+    /// Coins transferred with the call.
     pub coins: u64,
+    /// `false` once cancelled.
     pub scheduled: bool,
 }
 
@@ -87,29 +122,52 @@ struct MockedCall {
 
 type CallHandler = std::boxed::Box<dyn FnMut(&str, &str, &[u8], u64) -> Option<Vec<u8>>>;
 
+/// The mock VM state. Reach it with [`with_vm`] when the helper functions
+/// below are not enough.
 pub struct MockVm {
+    /// Every known address.
     pub ledger: BTreeMap<String, MockAccount>,
+    /// Call stack, originator first, executing contract last.
     pub call_stack: Vec<String>,
     /// Addresses created during the current execution (write access).
     pub created: Vec<String>,
+    /// Events emitted so far.
     pub events: Vec<String>,
+    /// Messages printed so far.
     pub prints: Vec<String>,
+    /// Operation datastore.
     pub op_datastore: BTreeMap<Vec<u8>, Vec<u8>>,
+    /// Coins sent with the current call.
     pub transferred_coins: u64,
+    /// Slot timestamp, milliseconds.
     pub time: u64,
+    /// Current period.
     pub period: u64,
+    /// Current thread.
     pub thread: u8,
+    /// Chain id.
     pub chain_id: u64,
+    /// Result of `caller_has_write_access`.
     pub admin_context: bool,
+    /// Origin operation id (`None` = not started by an operation).
     pub origin_operation_id: Option<String>,
+    /// Result of `remaining_gas`.
     pub remaining_gas: u64,
+    /// Result of `unsafe_random`.
     pub random: i64,
+    /// Result of Massa signature checks.
     pub signature_valid: bool,
+    /// Result of EVM signature checks.
     pub evm_signature_valid: bool,
+    /// Public key returned by EVM signature recovery.
     pub evm_recovered_pubkey: Vec<u8>,
+    /// Result of `function_exists`.
     pub function_exists: bool,
+    /// Calls made to other contracts.
     pub recorded_calls: Vec<RecordedCall>,
+    /// Asynchronous messages sent.
     pub async_messages: Vec<AsyncMessage>,
+    /// Deferred calls booked.
     pub deferred_calls: Vec<DeferredCall>,
     mocked_calls: VecDeque<MockedCall>,
     call_handler: Option<CallHandler>,
@@ -218,12 +276,12 @@ impl MockVm {
 
     // ---- env implementation -------------------------------------------------
 
-    pub fn print(&mut self, message: &str) {
+    pub(crate) fn print(&mut self, message: &str) {
         std::println!("{message}");
         self.prints.push(message.to_string());
     }
 
-    pub fn generate_event(&mut self, event: &str) {
+    pub(crate) fn generate_event(&mut self, event: &str) {
         self.events.push(event.to_string());
     }
 
@@ -292,7 +350,7 @@ pub(crate) fn local_execution(_bytecode: &[u8], function: &str, args: &[u8]) -> 
 }
 
 impl MockVm {
-    pub fn create_sc(&mut self, bytecode: &[u8]) -> String {
+    pub(crate) fn create_sc(&mut self, bytecode: &[u8]) -> String {
         let address = self.generated_address("AS");
         self.ledger.insert(
             address.clone(),
@@ -302,36 +360,36 @@ impl MockVm {
         address
     }
 
-    pub fn get_bytecode(&mut self) -> Vec<u8> {
+    pub(crate) fn get_bytecode(&mut self) -> Vec<u8> {
         let callee = self.callee();
         self.account(&callee).bytecode.clone()
     }
 
-    pub fn get_bytecode_of(&mut self, address: &str) -> Vec<u8> {
+    pub(crate) fn get_bytecode_of(&mut self, address: &str) -> Vec<u8> {
         self.account(address).bytecode.clone()
     }
 
-    pub fn set_bytecode(&mut self, bytecode: &[u8]) {
+    pub(crate) fn set_bytecode(&mut self, bytecode: &[u8]) {
         let callee = self.callee();
         self.account_mut(&callee).bytecode = bytecode.to_vec();
     }
 
-    pub fn set_bytecode_of(&mut self, address: &str, bytecode: &[u8]) {
+    pub(crate) fn set_bytecode_of(&mut self, address: &str, bytecode: &[u8]) {
         if !self.can_write(address) {
             fail(format_args!("no write access to {address}"));
         }
         self.account_mut(address).bytecode = bytecode.to_vec();
     }
 
-    pub fn function_exists(&mut self, _address: &str, _function: &str) -> bool {
+    pub(crate) fn function_exists(&mut self, _address: &str, _function: &str) -> bool {
         self.function_exists
     }
 
-    pub fn caller_has_write_access(&mut self) -> bool {
+    pub(crate) fn caller_has_write_access(&mut self) -> bool {
         self.admin_context
     }
 
-    pub fn remaining_gas(&mut self) -> u64 {
+    pub(crate) fn remaining_gas(&mut self) -> u64 {
         self.remaining_gas
     }
 
@@ -341,12 +399,12 @@ impl MockVm {
         }
     }
 
-    pub fn set(&mut self, key: &[u8], value: &[u8]) {
+    pub(crate) fn set(&mut self, key: &[u8], value: &[u8]) {
         let callee = self.callee();
         self.set_of(&callee, key, value)
     }
 
-    pub fn set_of(&mut self, address: &str, key: &[u8], value: &[u8]) {
+    pub(crate) fn set_of(&mut self, address: &str, key: &[u8], value: &[u8]) {
         Self::check_key(key);
         if !self.can_write(address) {
             fail(format_args!("no write access to the datastore of {address}"));
@@ -357,12 +415,12 @@ impl MockVm {
         self.account_mut(address).datastore.insert(key.to_vec(), value.to_vec());
     }
 
-    pub fn get(&mut self, key: &[u8]) -> Vec<u8> {
+    pub(crate) fn get(&mut self, key: &[u8]) -> Vec<u8> {
         let callee = self.callee();
         self.get_of(&callee, key)
     }
 
-    pub fn get_of(&mut self, address: &str, key: &[u8]) -> Vec<u8> {
+    pub(crate) fn get_of(&mut self, address: &str, key: &[u8]) -> Vec<u8> {
         match self.account(address).datastore.get(key) {
             Some(v) => v.clone(),
             None => {
@@ -371,12 +429,12 @@ impl MockVm {
         }
     }
 
-    pub fn del(&mut self, key: &[u8]) {
+    pub(crate) fn del(&mut self, key: &[u8]) {
         let callee = self.callee();
         self.delete_of(&callee, key)
     }
 
-    pub fn delete_of(&mut self, address: &str, key: &[u8]) {
+    pub(crate) fn delete_of(&mut self, address: &str, key: &[u8]) {
         if !self.can_write(address) {
             fail(format_args!("no write access to the datastore of {address}"));
         }
@@ -385,12 +443,12 @@ impl MockVm {
         }
     }
 
-    pub fn append(&mut self, key: &[u8], value: &[u8]) {
+    pub(crate) fn append(&mut self, key: &[u8], value: &[u8]) {
         let callee = self.callee();
         self.append_of(&callee, key, value)
     }
 
-    pub fn append_of(&mut self, address: &str, key: &[u8], value: &[u8]) {
+    pub(crate) fn append_of(&mut self, address: &str, key: &[u8], value: &[u8]) {
         if !self.can_write(address) {
             fail(format_args!("no write access to the datastore of {address}"));
         }
@@ -402,12 +460,12 @@ impl MockVm {
         }
     }
 
-    pub fn has(&mut self, key: &[u8]) -> bool {
+    pub(crate) fn has(&mut self, key: &[u8]) -> bool {
         let callee = self.callee();
         self.has_of(&callee, key)
     }
 
-    pub fn has_of(&mut self, address: &str, key: &[u8]) -> bool {
+    pub(crate) fn has_of(&mut self, address: &str, key: &[u8]) -> bool {
         self.ledger.get(address).map(|a| a.datastore.contains_key(key)).unwrap_or(false)
     }
 
@@ -421,12 +479,12 @@ impl MockVm {
             .collect()
     }
 
-    pub fn get_keys(&mut self, prefix: &[u8]) -> Vec<Vec<u8>> {
+    pub(crate) fn get_keys(&mut self, prefix: &[u8]) -> Vec<Vec<u8>> {
         let callee = self.callee();
         self.get_keys_of(&callee, prefix)
     }
 
-    pub fn get_keys_of(&mut self, address: &str, prefix: &[u8]) -> Vec<Vec<u8>> {
+    pub(crate) fn get_keys_of(&mut self, address: &str, prefix: &[u8]) -> Vec<Vec<u8>> {
         let keys = self.keys_of_filtered(address, prefix, None);
         if keys.len() > MAX_DATASTORE_KEYS_PAGE as usize {
             fail(format_args!(
@@ -437,12 +495,12 @@ impl MockVm {
         keys
     }
 
-    pub fn get_keys_page(&mut self, prefix: &[u8], start_key: &[u8], count: u32) -> Vec<Vec<u8>> {
+    pub(crate) fn get_keys_page(&mut self, prefix: &[u8], start_key: &[u8], count: u32) -> Vec<Vec<u8>> {
         let callee = self.callee();
         self.get_keys_of_page(&callee, prefix, start_key, count)
     }
 
-    pub fn get_keys_of_page(
+    pub(crate) fn get_keys_of_page(
         &mut self,
         address: &str,
         prefix: &[u8],
@@ -460,50 +518,50 @@ impl MockVm {
         keys
     }
 
-    pub fn owned_addresses(&mut self) -> Vec<String> {
+    pub(crate) fn owned_addresses(&mut self) -> Vec<String> {
         let mut v = std::vec![self.callee()];
         v.extend(self.created.iter().cloned());
         v
     }
 
-    pub fn call_stack(&mut self) -> Vec<String> {
+    pub(crate) fn call_stack(&mut self) -> Vec<String> {
         self.call_stack.clone()
     }
 
-    pub fn call_coins(&mut self) -> u64 {
+    pub(crate) fn call_coins(&mut self) -> u64 {
         self.transferred_coins
     }
 
-    pub fn time(&mut self) -> u64 {
+    pub(crate) fn time(&mut self) -> u64 {
         self.time
     }
 
-    pub fn current_period(&mut self) -> u64 {
+    pub(crate) fn current_period(&mut self) -> u64 {
         self.period
     }
 
-    pub fn current_thread(&mut self) -> u8 {
+    pub(crate) fn current_thread(&mut self) -> u8 {
         self.thread
     }
 
-    pub fn origin_operation_id(&mut self) -> String {
+    pub(crate) fn origin_operation_id(&mut self) -> String {
         self.origin_operation_id.clone().unwrap_or_default()
     }
 
-    pub fn chain_id(&mut self) -> u64 {
+    pub(crate) fn chain_id(&mut self) -> u64 {
         self.chain_id
     }
 
-    pub fn unsafe_random(&mut self) -> i64 {
+    pub(crate) fn unsafe_random(&mut self) -> i64 {
         self.random
     }
 
-    pub fn transfer_coins(&mut self, to: &str, amount: u64) {
+    pub(crate) fn transfer_coins(&mut self, to: &str, amount: u64) {
         let from = self.callee();
         self.transfer_coins_of(&from, to, amount)
     }
 
-    pub fn transfer_coins_of(&mut self, from: &str, to: &str, amount: u64) {
+    pub(crate) fn transfer_coins_of(&mut self, from: &str, to: &str, amount: u64) {
         if !self.can_write(from) {
             fail(format_args!("no write access to {from}"));
         }
@@ -518,41 +576,46 @@ impl MockVm {
         self.account_mut(to).balance += amount;
     }
 
-    pub fn balance(&mut self) -> u64 {
+    pub(crate) fn balance(&mut self) -> u64 {
         let callee = self.callee();
         self.balance_of(&callee)
     }
 
-    pub fn balance_of(&mut self, address: &str) -> u64 {
+    pub(crate) fn balance_of(&mut self, address: &str) -> u64 {
         self.ledger.get(address).map(|a| a.balance).unwrap_or(0)
     }
 
-    pub fn blake3(&mut self, data: &[u8]) -> [u8; 32] {
+    pub(crate) fn blake3(&mut self, data: &[u8]) -> [u8; 32] {
         *blake3::hash(data).as_bytes()
     }
 
-    pub fn sha256(&mut self, data: &[u8]) -> [u8; 32] {
+    pub(crate) fn sha256(&mut self, data: &[u8]) -> [u8; 32] {
         use sha2::Digest;
         sha2::Sha256::digest(data).into()
     }
 
-    pub fn keccak256(&mut self, data: &[u8]) -> [u8; 32] {
+    pub(crate) fn keccak256(&mut self, data: &[u8]) -> [u8; 32] {
         use sha3::Digest;
         sha3::Keccak256::digest(data).into()
     }
 
-    pub fn mimc(&mut self, data: &[u8]) -> [u8; 32] {
+    pub(crate) fn mimc(&mut self, data: &[u8]) -> [u8; 32] {
         match mimc::hash(data) {
             Ok(h) => h,
             Err(e) => fail(e),
         }
     }
 
-    pub fn is_signature_valid(&mut self, _data: &str, _signature: &str, _public_key: &str) -> bool {
+    pub(crate) fn is_signature_valid(&mut self, _data: &str, _signature: &str, _public_key: &str) -> bool {
         self.signature_valid
     }
 
-    pub fn is_evm_signature_valid(&mut self, _data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
+    pub(crate) fn is_evm_signature_valid(
+        &mut self,
+        _data: &[u8],
+        signature: &[u8],
+        public_key: &[u8],
+    ) -> bool {
         if signature.len() != 65 {
             fail("invalid EVM signature length, expected 65 bytes");
         }
@@ -562,41 +625,41 @@ impl MockVm {
         self.evm_signature_valid
     }
 
-    pub fn evm_get_address_from_pubkey(&mut self, public_key: &[u8]) -> Vec<u8> {
+    pub(crate) fn evm_get_address_from_pubkey(&mut self, public_key: &[u8]) -> Vec<u8> {
         if public_key.len() != 64 {
             fail("invalid EVM public key length, expected 64 bytes");
         }
         self.keccak256(public_key)[12..].to_vec()
     }
 
-    pub fn evm_get_pubkey_from_signature(&mut self, _hash: &[u8], signature: &[u8]) -> Vec<u8> {
+    pub(crate) fn evm_get_pubkey_from_signature(&mut self, _hash: &[u8], signature: &[u8]) -> Vec<u8> {
         if signature.len() != 65 {
             fail("invalid EVM signature length, expected 65 bytes");
         }
         self.evm_recovered_pubkey.clone()
     }
 
-    pub fn is_address_eoa(&mut self, address: &str) -> bool {
+    pub(crate) fn is_address_eoa(&mut self, address: &str) -> bool {
         is_valid_address(address) && address.starts_with("AU")
     }
 
-    pub fn public_key_to_address(&mut self, _public_key: &str) -> String {
+    pub(crate) fn public_key_to_address(&mut self, _public_key: &str) -> String {
         DEFAULT_CALLER.to_string()
     }
 
-    pub fn validate_address(&mut self, address: &str) -> bool {
+    pub(crate) fn validate_address(&mut self, address: &str) -> bool {
         is_valid_address(address)
     }
 
-    pub fn get_op_keys(&mut self, prefix: &[u8]) -> Vec<Vec<u8>> {
+    pub(crate) fn get_op_keys(&mut self, prefix: &[u8]) -> Vec<Vec<u8>> {
         self.op_datastore.keys().filter(|k| k.starts_with(prefix)).cloned().collect()
     }
 
-    pub fn has_op_key(&mut self, key: &[u8]) -> bool {
+    pub(crate) fn has_op_key(&mut self, key: &[u8]) -> bool {
         self.op_datastore.contains_key(key)
     }
 
-    pub fn get_op_data(&mut self, key: &[u8]) -> Vec<u8> {
+    pub(crate) fn get_op_data(&mut self, key: &[u8]) -> Vec<u8> {
         match self.op_datastore.get(key) {
             Some(v) => v.clone(),
             None => fail(format_args!("operation datastore key {key:?} not found")),
@@ -604,7 +667,7 @@ impl MockVm {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn send_message(
+    pub(crate) fn send_message(
         &mut self,
         address: &str,
         function: &str,
@@ -638,11 +701,11 @@ impl MockVm {
         });
     }
 
-    pub fn deferred_call_quote(&mut self, _slot: (u64, u8), max_gas: u64, params_size: u64) -> u64 {
+    pub(crate) fn deferred_call_quote(&mut self, _slot: (u64, u8), max_gas: u64, params_size: u64) -> u64 {
         1_000_000 + max_gas / 10 + params_size * 1_000
     }
 
-    pub fn deferred_call_register(
+    pub(crate) fn deferred_call_register(
         &mut self,
         address: &str,
         function: &str,
@@ -673,11 +736,11 @@ impl MockVm {
         id
     }
 
-    pub fn deferred_call_exists(&mut self, id: &str) -> bool {
+    pub(crate) fn deferred_call_exists(&mut self, id: &str) -> bool {
         self.deferred_calls.iter().any(|c| c.id == id && c.scheduled)
     }
 
-    pub fn deferred_call_cancel(&mut self, id: &str) {
+    pub(crate) fn deferred_call_cancel(&mut self, id: &str) {
         let callee = self.callee();
         match self.deferred_calls.iter_mut().find(|c| c.id == id && c.scheduled) {
             Some(c) => {
@@ -757,10 +820,12 @@ pub fn set_transferred_coins(coins: u64) {
     with_vm(|vm| vm.transferred_coins = coins)
 }
 
+/// Set the balance of `address` (created when missing).
 pub fn set_balance(address: &Address, balance: u64) {
     with_vm(|vm| vm.account_mut(address.as_str()).balance = balance)
 }
 
+/// Balance of `address`.
 pub fn balance_of(address: &Address) -> u64 {
     with_vm(|vm| vm.balance_of(address.as_str()))
 }
@@ -770,6 +835,7 @@ pub fn set_time(time_ms: u64) {
     with_vm(|vm| vm.time = time_ms)
 }
 
+/// Current slot.
 pub fn set_slot(period: u64, thread: u8) {
     with_vm(|vm| {
         vm.period = period;
@@ -777,26 +843,32 @@ pub fn set_slot(period: u64, thread: u8) {
     })
 }
 
+/// Chain id reported by [`crate::context::chain_id`].
 pub fn set_chain_id(chain_id: u64) {
     with_vm(|vm| vm.chain_id = chain_id)
 }
 
+/// Origin operation id (`None` for executions not started by an operation).
 pub fn set_origin_operation_id(id: Option<&str>) {
     with_vm(|vm| vm.origin_operation_id = id.map(String::from))
 }
 
+/// Value reported by [`crate::context::remaining_gas`].
 pub fn set_remaining_gas(gas: u64) {
     with_vm(|vm| vm.remaining_gas = gas)
 }
 
+/// Value reported by [`crate::crypto::unsafe_random`].
 pub fn set_unsafe_random(value: i64) {
     with_vm(|vm| vm.random = value)
 }
 
+/// Result of [`crate::crypto::is_signature_valid`].
 pub fn set_signature_valid(valid: bool) {
     with_vm(|vm| vm.signature_valid = valid)
 }
 
+/// Result of [`crate::crypto::is_evm_signature_valid`].
 pub fn set_evm_signature_valid(valid: bool) {
     with_vm(|vm| vm.evm_signature_valid = valid)
 }
@@ -869,6 +941,7 @@ pub fn events() -> Vec<String> {
     with_vm(|vm| vm.events.clone())
 }
 
+/// Forget the events emitted so far.
 pub fn clear_events() {
     with_vm(|vm| vm.events.clear())
 }
@@ -944,6 +1017,7 @@ pub mod mimc {
         U256::from_be_bytes(*bytes) % R
     }
 
+    /// MiMC hash of `bytes` (same rules and result as the C-Layer node).
     pub fn hash(bytes: &[u8]) -> Result<[u8; 32], String> {
         if bytes.len() % 32 != 0 && bytes.len() > 32 {
             return Err("Input length must less than 32 or a multiple of 32".into());

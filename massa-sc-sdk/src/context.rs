@@ -18,11 +18,14 @@ use crate::{env, Address};
 /// A block slot: `(period, thread)`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Slot {
+    /// Period number.
     pub period: u64,
+    /// Thread index (`0..THREAD_COUNT`).
     pub thread: u8,
 }
 
 impl Slot {
+    /// A slot from its coordinates.
     pub const fn new(period: u64, thread: u8) -> Self {
         Self { period, thread }
     }
@@ -122,16 +125,19 @@ pub fn remaining_gas() -> u64 {
     env::remaining_gas()
 }
 
+/// Period of the current slot.
 #[inline]
 pub fn current_period() -> u64 {
     env::current_period()
 }
 
+/// Thread of the current slot.
 #[inline]
 pub fn current_thread() -> u8 {
     env::current_thread()
 }
 
+/// The current slot.
 #[inline]
 pub fn current_slot() -> Slot {
     Slot::current()

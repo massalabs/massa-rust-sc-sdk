@@ -18,6 +18,24 @@ Examples (counter, tokens, NFT, cross-contract calls, deferred calls, deployer,
 C-Layer MiMC...) with buildnet deployment scripts live in
 [massa-rust-sc-examples](https://github.com/massalabs/massa-rust-sc-examples).
 
+## Interoperable by construction
+
+A Rust contract is, for the runtime, other contracts and clients, the same
+thing as an AssemblyScript one: one serialized `Args` parameter per entry
+point, the same `Args` bytes as `@massalabs/as-types` / `massa-web3`, the same
+return idioms, `constructor` called by the same deployer, the same events,
+and for the standards the same storage layouts and entry-point names as
+`@massalabs/sc-standards`. Rust and AssemblyScript contracts call each other
+transparently, and an MRC20/721/1155 written in one can be replaced by the
+other on top of its datastore.
+
+This is not a claim but a test: [`interop/`](interop) compiles AssemblyScript
+fixtures with `asc` from the real AS SDK and standards, and
+[`tools/massa-sc-runner/tests/interop.rs`](tools/massa-sc-runner/tests/interop.rs)
+runs both sides together in the real Massa runtime (cross calls in every
+direction, byte-for-byte `Args` round trips, identical datastores and events).
+Details: [docs/interop.md](docs/interop.md).
+
 ## Quick start
 
 ```sh
@@ -29,6 +47,7 @@ cargo massa new my-contract      # or: --template token
 cd my-contract
 cargo test                       # native unit tests on the mock VM
 cargo massa build                # build/my_contract.wasm, ready to deploy
+cd scripts && npm install && npm run deploy   # deploy + call it with massa-web3 (PRIVATE_KEY in .env)
 ```
 
 A contract is a `cdylib` crate; entry points are plain functions marked
@@ -101,6 +120,15 @@ const value = bytesToU64((await contract.read('increment')).value);
 The ABI reference, memory protocol, size/gas guidance and a migration guide
 are in [`docs/`](docs).
 
+## Networks
+
+Massa and [C-Layer](https://github.com/massalabs/c-layer) share the ABI;
+C-Layer adds `clayer::mimc` and does not expose the MIP-0002 paginated-key
+imports yet. The SDK only imports what a contract calls, so a contract runs
+on both unless it uses one of those, and `cargo massa build --network
+massa|clayer|any` fails the build when it does. Only the AssemblyScript-module
+ABI is used: no protobuf, no `wasmv1`.
+
 ## Why `wasm32v1-none`
 
 Massa's runtime (wasmer 4.3, deterministic feature set) only accepts MVP
@@ -140,6 +168,7 @@ cargo test --workspace                       # SDK + standards + tool, natively
 cargo build -p massa-sc-sdk --target wasm32v1-none
 cargo run -p cargo-massa -- massa check build/my_contract.wasm
 (cd tools/massa-sc-runner && cargo build --release)   # pulls wasmer
+interop/build.sh && (cd tools/massa-sc-runner && cargo test --release --test interop)   # AS interop suite
 ```
 
 Minimum supported Rust version: 1.85. License: MIT.

@@ -5,7 +5,9 @@ use massa_sc_sdk::prelude::*;
 
 use super::internals::{uri as collection_uri, URI_EVENT};
 
+/// Datastore key of the base URI.
 pub const BASE_URI_KEY: &str = "BASE_URI";
+/// Prefix of per-token URI entries: `TOKENS_URI ++ id`.
 pub const TOKENS_URI_KEY: &str = "TOKENS_URI";
 
 fn token_uri_key(id: U256) -> Vec<u8> {
@@ -19,14 +21,17 @@ fn read_string(key: impl AsRef<[u8]>) -> String {
     storage::try_get(key).map(|b| String::from_utf8_lossy(&b).into_owned()).unwrap_or_default()
 }
 
+/// Set the base URI prepended to every token URI.
 pub fn set_base_uri(base_uri: &str) {
     storage::set(BASE_URI_KEY, base_uri);
 }
 
+/// The base URI (empty when unset).
 pub fn base_uri() -> String {
     read_string(BASE_URI_KEY)
 }
 
+/// The URI suffix of `id` (empty when unset).
 pub fn token_uri(id: U256) -> String {
     read_string(token_uri_key(id))
 }
@@ -49,6 +54,7 @@ pub fn uri(id: U256) -> String {
     }
 }
 
+/// Entry points taking serialized arguments.
 pub mod entrypoints {
     use super::*;
 

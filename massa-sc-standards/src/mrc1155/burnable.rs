@@ -6,6 +6,7 @@ use super::internals::{self, is_approved_for_all, MISSING_APPROVAL_FOR_ALL_ERROR
 
 pub use internals::{burn, burn_batch};
 
+/// Entry points taking serialized arguments.
 pub mod entrypoints {
     use super::*;
 

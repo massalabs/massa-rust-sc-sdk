@@ -26,6 +26,10 @@ cargo massa check build/my_token.wasm
    imports and their signatures, function/import/export/section limits,
    memory size, entry-point signatures) and prints a report.
 
+`--network massa|clayer|any` turns the warnings about network-specific
+imports (`mimc` is C-Layer only, paginated datastore keys need MIP-0002 which
+C-Layer does not have yet) into errors for the network you target.
+
 Extra rustc flags: `--rustflag` or the `MASSA_RUSTFLAGS` environment
 variable. Extra cargo flags after `--`.
 

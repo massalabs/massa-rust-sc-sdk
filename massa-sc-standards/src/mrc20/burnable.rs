@@ -4,6 +4,7 @@ use massa_sc_sdk::prelude::*;
 
 use super::internals::{allowance, approve, balance, set_balance, set_total_supply, total_supply};
 
+/// Event emitted by burns.
 pub const BURN_EVENT: &str = "BURN_SUCCESS";
 
 /// Destroy `amount` tokens of `owner` (no access check, no event).
@@ -12,6 +13,7 @@ pub fn burn(owner: &Address, amount: U256) {
     decrease_balance(owner, amount);
 }
 
+/// Remove `amount` from the balance of `owner`; aborts on underflow.
 pub fn decrease_balance(owner: &Address, amount: U256) {
     let old = balance(owner);
     let new =
@@ -19,12 +21,14 @@ pub fn decrease_balance(owner: &Address, amount: U256) {
     set_balance(owner, new);
 }
 
+/// Remove `amount` from the total supply; aborts on underflow.
 pub fn decrease_total_supply(amount: U256) {
     let old = total_supply();
     let new = old.checked_sub(amount).expect("Requested burn amount causes an underflow of the total supply");
     set_total_supply(new);
 }
 
+/// Entry points taking serialized arguments.
 pub mod entrypoints {
     use super::*;
 

@@ -39,6 +39,7 @@ pub trait Backend {
     fn grow(wanted: usize) -> Option<usize>;
 }
 
+/// The allocator state: bump pointer, memory limit and per-class free lists.
 pub struct Heap<B: Backend> {
     top: usize,
     limit: usize,
@@ -57,6 +58,7 @@ fn class(size: usize) -> (usize, usize) {
 }
 
 impl<B: Backend> Heap<B> {
+    /// An empty heap; memory is claimed from the backend on first use.
     pub const fn new() -> Self {
         Self { top: 0, limit: 0, free: [0; NUM_CLASSES], _b: PhantomData }
     }

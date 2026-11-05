@@ -9,7 +9,7 @@
 //!   [`crate::export_mrc20_burnable!`]: expose them from a contract.
 //! * [`Mrc20`]: client to call a token deployed at some address.
 //!
-//! ```ignore
+//! ```
 //! use massa_sc_sdk::prelude::*;
 //! use massa_sc_standards::{export_mrc20, export_ownable, mrc20};
 //!
@@ -37,12 +37,19 @@ use massa_sc_sdk::prelude::*;
 
 use crate::ownership;
 
+/// Value returned by `version()`.
 pub const VERSION: &str = "0.1.0";
+/// Datastore key of the token name.
 pub const NAME_KEY: &str = "NAME";
+/// Datastore key of the token symbol.
 pub const SYMBOL_KEY: &str = "SYMBOL";
+/// Datastore key of the total supply (`u256`, little-endian).
 pub const TOTAL_SUPPLY_KEY: &str = "TOTAL_SUPPLY";
+/// Datastore key of the decimals (one byte).
 pub const DECIMALS_KEY: &str = "DECIMALS";
+/// Event emitted by transfers.
 pub const TRANSFER_EVENT_NAME: &str = "TRANSFER SUCCESS";
+/// Event emitted by allowance changes.
 pub const APPROVAL_EVENT_NAME: &str = "APPROVAL SUCCESS";
 
 /// Initialize the token: metadata, total supply credited to the caller, and
@@ -59,18 +66,22 @@ pub fn constructor(name: &str, symbol: &str, decimals: u8, total_supply: U256) {
     internals::set_balance(&caller, total_supply);
 }
 
+/// Token name.
 pub fn name() -> String {
     String::from_utf8_lossy(&storage::get(NAME_KEY)).into_owned()
 }
 
+/// Token symbol.
 pub fn symbol() -> String {
     String::from_utf8_lossy(&storage::get(SYMBOL_KEY)).into_owned()
 }
 
+/// Number of decimals.
 pub fn decimals() -> u8 {
     storage::get(DECIMALS_KEY).first().copied().unwrap_or(0)
 }
 
+/// Total supply.
 pub fn total_supply() -> U256 {
     internals::read_u256(&storage::get(TOTAL_SUPPLY_KEY))
 }

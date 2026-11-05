@@ -20,16 +20,25 @@ use syn::{
 ///   when `None`) and `Result<T, E: Display>` (`Err` aborts with the message).
 ///
 /// ```ignore
+/// use massa_sc_sdk::prelude::*;
+///
 /// #[export]
 /// pub fn transfer(mut args: Args) -> Result<(), ArgsError> {
 ///     let to: Address = args.next()?;
 ///     let amount: u64 = args.next()?;
-///     // ...
+///     storage::set_value(to.as_bytes(), &amount);
 ///     Ok(())
 /// }
 ///
 /// #[export(name = "balanceOf")]
-/// pub fn balance_of(mut args: Args) -> u64 { /* ... */ }
+/// pub fn balance_of(mut args: Args) -> u64 {
+///     let who: Address = args.must_next("address");
+///     storage::try_get_value(who.as_bytes()).unwrap_or(0)
+/// }
+/// # massa_sc_sdk::mock::reset();
+/// # let me = context::caller();
+/// # transfer(Args::new().add(&me).add(7u64)).unwrap();
+/// # assert_eq!(balance_of(Args::new().add(&me)), 7);
 /// ```
 #[proc_macro_attribute]
 pub fn export(attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -122,7 +131,10 @@ fn expand_export(func: ItemFn, export_name: String) -> syn::Result<proc_macro2::
 }
 
 /// Derive `ArgsEncode` + `ArgsDecode` (hence `Serializable`) for a struct:
-/// fields are encoded in declaration order, without any length prefix.
+/// fields are encoded in declaration order, without any length prefix, like
+/// an AssemblyScript class implementing `Serializable`. The struct can then
+/// be an [`Args`] element, an entry-point parameter or return value, and a
+/// typed datastore / `PersistentMap` value.
 #[proc_macro_derive(Serializable)]
 pub fn derive_serializable(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -178,6 +190,15 @@ fn expand_serializable(input: DeriveInput) -> syn::Result<proc_macro2::TokenStre
         impl #impl_generics #sdk::ArgsDecode for #name #ty_generics #where_clause {
             fn decode(args: &mut #sdk::Args) -> ::core::result::Result<Self, #sdk::ArgsError> {
                 #decode_body
+            }
+        }
+        // Storable as a typed datastore value / PersistentMap value.
+        impl #impl_generics #sdk::storage::StorageValue for #name #ty_generics #where_clause {
+            fn to_storage(&self) -> #sdk::prelude::Vec<u8> {
+                #sdk::ArgsEncode::encode(self)
+            }
+            fn from_storage(bytes: &[u8]) -> ::core::option::Option<Self> {
+                <Self as #sdk::ArgsDecode>::decode_bytes(bytes).ok()
             }
         }
         // Entry points may return the struct (serialized) or take it as their parameter.

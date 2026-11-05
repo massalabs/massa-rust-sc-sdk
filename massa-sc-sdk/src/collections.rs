@@ -9,17 +9,23 @@ use crate::storage::{self, StorageValue};
 
 /// A persistent map stored in the contract datastore under a unique prefix.
 ///
-/// Keys are rendered with `Display` and stored as `"<prefix>::<key>"`; values
-/// use the [`StorageValue`] encoding. The map does not keep track of its keys:
-/// store them in the values if you need to enumerate them, or use
-/// [`crate::storage::get_keys_page`] with the map prefix.
+/// Byte-compatible with the AssemblyScript `PersistentMap`: keys are rendered
+/// with `Display` and stored as `"<prefix>::<key>"`, values use the map
+/// encoding of [`StorageValue`] (integers and floats on 8 bytes, strings and
+/// byte strings raw, structures serialized). The map does not keep track of
+/// its keys: store them in the values if you need to enumerate them, or use
+/// [`crate::storage::get_keys`] with the map prefix.
 ///
 /// Every collection living in the same contract must use a distinct prefix.
 ///
-/// ```ignore
+/// ```
+/// # use massa_sc_sdk::{collections::PersistentMap, mock, Address};
+/// # mock::reset();
+/// # let user = mock::new_user_address();
 /// let balances: PersistentMap<Address, u64> = PersistentMap::new("bal");
 /// balances.set(&user, 10);
 /// assert_eq!(balances.get(&user), Some(10));
+/// assert_eq!(balances.get(&mock::new_user_address()), None);
 /// ```
 pub struct PersistentMap<K, V> {
     prefix: String,
@@ -47,13 +53,14 @@ impl<K: Display, V: StorageValue> PersistentMap<K, V> {
         self.prefix.as_bytes()
     }
 
+    /// `true` when `key` is in the map.
     pub fn contains(&self, key: &K) -> bool {
         storage::has(self.storage_key(key))
     }
 
-    /// Value for `key`, `None` when absent.
+    /// Value for `key`, `None` when absent (or not decodable as `V`).
     pub fn get(&self, key: &K) -> Option<V> {
-        storage::try_get_value(self.storage_key(key))
+        storage::try_get(self.storage_key(key)).and_then(|b| V::from_map_value(&b))
     }
 
     /// Value for `key`, or `default`.
@@ -69,8 +76,9 @@ impl<K: Display, V: StorageValue> PersistentMap<K, V> {
         }
     }
 
+    /// Insert or overwrite `key`.
     pub fn set(&self, key: &K, value: V) {
-        storage::set_value(self.storage_key(key), &value)
+        storage::set(self.storage_key(key), value.to_map_value())
     }
 
     /// Remove `key`; returns whether it existed.
@@ -101,6 +109,10 @@ mod tests {
         m.set(&a, 5);
         assert_eq!(m.get(&a), Some(5));
         assert_eq!(storage::get("bal::AU1a"), 5u64.to_le_bytes());
+        let small: PersistentMap<u32, u16> = PersistentMap::new("sm");
+        small.set(&1, 300);
+        assert_eq!(storage::get("sm::1"), 300i64.to_le_bytes(), "AS map width");
+        assert_eq!(small.get(&1), Some(300));
         assert!(m.delete(&a));
         assert!(!m.delete(&a));
         let s: PersistentMap<u32, String> = PersistentMap::new("names");

@@ -69,7 +69,76 @@ wasm = "build --release --target wasm32v1-none"
 rustflags = ["-C", "target-feature=+bulk-memory,+sign-ext", "-C", "link-arg=-zstack-size=262144"]
 "#;
 
-const GITIGNORE: &str = "/target\n/build\n.env\n";
+const GITIGNORE: &str = "/target\n/build\n.env\nnode_modules\n";
+
+const DEPLOY_PACKAGE_JSON: &str = r#"{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "tsx deploy.ts"
+  },
+  "dependencies": {
+    "@massalabs/massa-web3": "^5",
+    "dotenv": "^16"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}
+"#;
+
+const ENV_EXAMPLE: &str = r#"# Secret key of a funded account (buildnet coins: https://discord.gg/massa, #buildnet-faucet)
+PRIVATE_KEY=S1...
+# Buildnet (default). Mainnet: https://mainnet.massa.net/api/v2, local sandbox: http://127.0.0.1:33035
+JSON_RPC_URL=https://buildnet.massa.net/api/v2
+"#;
+
+fn deploy_script(name: &str, template: Template) -> String {
+    let crate_name = name.replace('-', "_");
+    let (ctor_args, after_deploy) = match template {
+        Template::Token => (
+            "new Args().addString('My Token').addString('MTK').addU8(9n).addU256(1_000_000n * 10n ** 9n)",
+            r#"const balance = await contract.read('balanceOf', new Args().addString(provider.address));
+console.log('owner balance:', U256.fromBytes(balance.value));"#,
+        ),
+        Template::Counter => (
+            "new Args().addU64(10n)",
+            r#"const op = await contract.call('increment', new Args().addU64(5n));
+await op.waitSpeculativeExecution();
+for (const e of await op.getSpeculativeEvents()) console.log('event:', e.data);
+console.log('get():', U64.fromBytes((await contract.read('get')).value));"#,
+        ),
+        Template::Empty => (
+            "new Args()",
+            r#"const result = await contract.read('hello', new Args().addString('Massa'));
+console.log('hello():', bytesToStr(result.value));"#,
+        ),
+    };
+    format!(
+        r#"// Deploy build/{crate_name}.wasm with massa-web3, call its constructor, then exercise it.
+//   cargo massa build && npm install && npm run deploy
+import 'dotenv/config';
+import {{ readFileSync }} from 'node:fs';
+import {{ Account, Args, JsonRpcProvider, Mas, SmartContract, U64, U256, bytesToStr }} from '@massalabs/massa-web3';
+
+const account = await Account.fromEnv();
+const provider = JsonRpcProvider.fromRPCUrl(process.env.JSON_RPC_URL ?? 'https://buildnet.massa.net/api/v2', account);
+console.log(`deploying from ${{account.address}} (${{Mas.toString(await provider.balance(false))}} MAS)`);
+
+const bytecode = readFileSync(new URL('../build/{crate_name}.wasm', import.meta.url));
+const contract = await SmartContract.deploy(provider, new Uint8Array(bytecode), {ctor_args}, {{
+  // Coins kept by the contract to pay the storage its constructor writes.
+  coins: Mas.fromString('0.1'),
+  waitFinalExecution: true,
+}});
+console.log('deployed at', contract.address);
+
+{after_deploy}
+"#
+    )
+}
 
 const COUNTER_LIB: &str = r#"#![cfg_attr(target_arch = "wasm32", no_std)]
 
@@ -203,12 +272,16 @@ A [Massa](https://massa.net) smart contract written in Rust with
 ```sh
 cargo test                 # unit tests, natively, against the in-memory mock VM
 cargo massa build          # build/<crate>.wasm, optimized and validated for the node
+
+cd scripts && cp .env.example .env   # PRIVATE_KEY of a funded account
+npm install && npm run deploy        # deploy with massa-web3 and call the contract
 ```
 
-Deploy and call it with [massa-web3](https://github.com/massalabs/massa-web3)
-exactly like an AssemblyScript contract; see the
-[examples repository](https://github.com/massalabs/massa-rust-sc-examples) for
-ready-made deployment scripts.
+The contract follows the same conventions as AssemblyScript ones (single
+`Args` parameter, `constructor` called by the deployer, same storage and event
+formats), so any Massa tooling and any other contract interoperate with it.
+See the [examples repository](https://github.com/massalabs/massa-rust-sc-examples)
+for more.
 "#
     )
 }
@@ -230,6 +303,7 @@ pub fn run(name: &str, template: Template, sdk: Option<&str>, standards: Option<
     };
     std::fs::create_dir_all(dir.join("src"))?;
     std::fs::create_dir_all(dir.join(".cargo"))?;
+    std::fs::create_dir_all(dir.join("scripts"))?;
     let write = |p: &str, c: &str| -> Result<()> {
         std::fs::write(dir.join(p), c).with_context(|| format!("writing {p}"))
     };
@@ -238,7 +312,11 @@ pub fn run(name: &str, template: Template, sdk: Option<&str>, standards: Option<
     write(".gitignore", GITIGNORE)?;
     write("src/lib.rs", lib)?;
     write("README.md", &readme(name))?;
+    write("scripts/package.json", DEPLOY_PACKAGE_JSON)?;
+    write("scripts/deploy.ts", &deploy_script(name, template))?;
+    write("scripts/.env.example", ENV_EXAMPLE)?;
     println!("created `{name}` ({template:?} template)");
     println!("  cd {name} && cargo test && cargo massa build");
+    println!("  cd scripts && cp .env.example .env && npm install && npm run deploy");
     Ok(())
 }

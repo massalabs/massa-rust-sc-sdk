@@ -7,6 +7,13 @@ cargo test --workspace
 cargo build -p massa-sc-sdk -p massa-sc-standards --target wasm32v1-none
 ```
 
+Interoperability with AssemblyScript (fixtures need npm):
+
+```sh
+SC_STANDARDS=path/to/massa-standards/smart-contracts interop/build.sh
+(cd tools/massa-sc-runner && cargo test --release --test interop)
+```
+
 End-to-end: build an example from
 [massa-rust-sc-examples](https://github.com/massalabs/massa-rust-sc-examples)
 with `cargo massa build` and run it with `tools/massa-sc-runner`, which

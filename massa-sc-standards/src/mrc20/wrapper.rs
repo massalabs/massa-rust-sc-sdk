@@ -7,17 +7,25 @@ use super::internals::read_u256;
 
 /// Typed calls to a remote MRC20 token.
 ///
-/// ```ignore
+/// ```
+/// # use massa_sc_sdk::{mock, prelude::*};
+/// # use massa_sc_standards::mrc20::Mrc20;
+/// # mock::reset();
+/// # let (token_address, recipient) = (mock::new_sc_address(), mock::new_user_address());
+/// # mock::mock_call(&token_address, "transfer", Vec::new());
 /// let token = Mrc20::new(token_address);
 /// let coins = token.balance_entry_cost(&recipient); // storage the caller must fund
 /// token.transfer(&recipient, U256::from(10u64), coins);
+/// # assert_eq!(mock::recorded_calls()[0].coins, coins);
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Mrc20 {
+    /// Address of the token contract.
     pub address: Address,
 }
 
 impl Mrc20 {
+    /// Client for the token at `address`.
     pub const fn new(address: Address) -> Self {
         Self { address }
     }
@@ -31,26 +39,32 @@ impl Mrc20 {
         self.call("constructor", Args::new().add(name).add(symbol).add(decimals).add(supply), coins);
     }
 
+    /// `version()` of the token.
     pub fn version(&self) -> String {
         String::from_utf8_lossy(&self.call("version", Args::new(), 0)).into_owned()
     }
 
+    /// `name()` of the token.
     pub fn name(&self) -> String {
         String::from_utf8_lossy(&self.call("name", Args::new(), 0)).into_owned()
     }
 
+    /// `symbol()` of the token.
     pub fn symbol(&self) -> String {
         String::from_utf8_lossy(&self.call("symbol", Args::new(), 0)).into_owned()
     }
 
+    /// `decimals()` of the token.
     pub fn decimals(&self) -> u8 {
         self.call("decimals", Args::new(), 0).first().copied().unwrap_or(0)
     }
 
+    /// `totalSupply()` of the token.
     pub fn total_supply(&self) -> U256 {
         read_u256(&self.call("totalSupply", Args::new(), 0))
     }
 
+    /// `balanceOf(account)`.
     pub fn balance_of(&self, account: &Address) -> U256 {
         read_u256(&self.call("balanceOf", Args::new().add(account), 0))
     }
@@ -61,30 +75,37 @@ impl Mrc20 {
         get_balance_entry_cost(&self.address, recipient)
     }
 
+    /// `transfer(to, amount)` of the current contract's tokens, sending `coins` for storage.
     pub fn transfer(&self, to: &Address, amount: U256, coins: u64) {
         self.call("transfer", Args::new().add(to).add(amount), coins);
     }
 
+    /// `allowance(owner, spender)`.
     pub fn allowance(&self, owner: &Address, spender: &Address) -> U256 {
         read_u256(&self.call("allowance", Args::new().add(owner).add(spender), 0))
     }
 
+    /// `increaseAllowance(spender, amount)` on the current contract's tokens.
     pub fn increase_allowance(&self, spender: &Address, amount: U256, coins: u64) {
         self.call("increaseAllowance", Args::new().add(spender).add(amount), coins);
     }
 
+    /// `decreaseAllowance(spender, amount)` on the current contract's tokens.
     pub fn decrease_allowance(&self, spender: &Address, amount: U256) {
         self.call("decreaseAllowance", Args::new().add(spender).add(amount), 0);
     }
 
+    /// `transferFrom(owner, recipient, amount)` using the current contract's allowance.
     pub fn transfer_from(&self, owner: &Address, recipient: &Address, amount: U256, coins: u64) {
         self.call("transferFrom", Args::new().add(owner).add(recipient).add(amount), coins);
     }
 
+    /// `mint(to, amount)` (the current contract must be the token owner).
     pub fn mint(&self, to: &Address, amount: U256, coins: u64) {
         self.call("mint", Args::new().add(to).add(amount), coins);
     }
 
+    /// `burn(amount)` of the current contract's tokens.
     pub fn burn(&self, amount: U256) {
         self.call("burn", Args::new().add(amount), 0);
     }

@@ -767,6 +767,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "foldhash"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
+
+[[package]]
 name = "form_urlencoded"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -948,6 +954,16 @@ name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
+
+[[package]]
+name = "hashbrown"
+version = "0.15.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
+dependencies = [
+ "foldhash",
+ "serde",
+]
 
 [[package]]
 name = "hashbrown"
@@ -1291,8 +1307,10 @@ dependencies = [
  "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs.git?rev=f54e4395a2323aecd1b47b092bca345c51fae9b8)",
  "massa-sc-runtime 0.10.0 (git+https://github.com/massalabs/massa-sc-runtime?rev=b40ec3899ca7eec92ee206d50c701157f7f429b4)",
  "massa-sc-runtime 0.10.0 (git+https://github.com/massalabs/c-layer-sc-runtime?rev=b84be8efe714ba4d207a2781f0363b4924df6f9d)",
+ "massa-sc-sdk",
  "sha2",
  "sha3",
+ "wasmparser 0.229.0",
 ]
 
 [[package]]
@@ -1361,6 +1379,16 @@ dependencies = [
  "wasmer-middlewares",
  "wasmer-types",
  "which",
+]
+
+[[package]]
+name = "massa-sc-sdk"
+version = "0.2.0"
+dependencies = [
+ "blake3",
+ "ethnum",
+ "sha2",
+ "sha3",
 ]
 
 [[package]]
@@ -2548,7 +2576,7 @@ dependencies = [
  "wasmer-object",
  "wasmer-types",
  "wasmer-vm",
- "wasmparser",
+ "wasmparser 0.121.2",
  "windows-sys 0.59.0",
  "xxhash-rust",
 ]
@@ -2705,6 +2733,19 @@ dependencies = [
  "bitflags 2.13.2",
  "indexmap 2.14.2",
  "semver",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.229.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc3b1f053f5d41aa55640a1fa9b6d1b8a9e4418d118ce308d20e24ff3575a8c"
+dependencies = [
+ "bitflags 2.13.2",
+ "hashbrown 0.15.5",
+ "indexmap 2.14.2",
+ "semver",
+ "serde",
 ]
 
 [[package]]

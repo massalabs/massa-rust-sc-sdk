@@ -28,6 +28,11 @@ sha2 = "0.10"
 sha3 = "0.10"
 blake3 = "1"
 ethnum = "1.5"
+wasmparser = "0.229"
+
+[dev-dependencies]
+# The interoperability suite (tests/interop.rs) speaks to the fixtures with the SDK's Args.
+massa-sc-sdk = { path = "../../massa-sc-sdk", default-features = false }
 
 [profile.release]
 opt-level = 2

@@ -11,7 +11,10 @@
 //! * [`enumerable`] + [`crate::export_mrc721_enumerable!`]: total supply and
 //!   per-owner token enumeration (replaces `mint`/`burn`/`transferFrom`).
 //!
-//! ```ignore
+//! ```
+//! use massa_sc_sdk::prelude::*;
+//! use massa_sc_standards::{export_mrc721, export_mrc721_metadata, export_ownable, mrc721};
+//!
 //! #[export]
 //! pub fn constructor(mut args: Args) {
 //!     let name: String = args.must_next("name");
@@ -20,6 +23,7 @@
 //! }
 //! export_mrc721!();
 //! export_mrc721_metadata!();
+//! export_ownable!();
 //! ```
 
 pub mod enumerable;
@@ -30,6 +34,7 @@ use massa_sc_sdk::prelude::*;
 
 use crate::ownership;
 
+/// Value returned by `version()`.
 pub const VERSION: &str = "0.2.0";
 
 /// Initialize the collection and make the caller its owner. Call it from
@@ -46,14 +51,17 @@ pub use internals::{balance_of, get_approved, is_approved_for_all, name, owner_o
 pub mod entrypoints {
     use super::*;
 
+    /// `name() -> string bytes`
     pub fn name() -> Vec<u8> {
         internals::name().into_bytes()
     }
 
+    /// `symbol() -> string bytes`
     pub fn symbol() -> Vec<u8> {
         internals::symbol().into_bytes()
     }
 
+    /// `version() -> string bytes`
     pub fn version() -> Vec<u8> {
         VERSION.as_bytes().to_vec()
     }

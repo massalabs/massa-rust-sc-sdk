@@ -10,7 +10,7 @@ use wasmparser::{
     CompositeInnerType, ExternalKind, Parser, Payload, TypeRef, ValType, Validator, WasmFeatures,
 };
 
-use crate::abi::{self, limits};
+use crate::abi::{self, limits, Network};
 
 /// Features enabled by `massa-sc-runtime` (`as_execution/mod.rs`): bulk
 /// memory only, plus the proposals wasmparser always accepts in wasmer 4.3.6
@@ -58,8 +58,8 @@ fn sig_string(params: &[ValType], results: &[ValType]) -> String {
     format!("({p})->({r})")
 }
 
-/// Inspect `bytes` and collect everything the node would complain about.
-pub fn inspect(bytes: &[u8]) -> Result<Report> {
+/// Inspect `bytes` and collect everything a node of `network` would complain about.
+pub fn inspect(bytes: &[u8], network: Option<Network>) -> Result<Report> {
     let mut report = Report { size: bytes.len(), ..Default::default() };
 
     if bytes.len() > limits::MAX_BYTECODE_LENGTH {
@@ -176,8 +176,13 @@ pub fn inspect(bytes: &[u8]) -> Result<Report> {
                         ));
                     }
                 }
-                if let Some(note) = h.note {
-                    report.warnings.push(format!("import `{name}`: {note}"));
+                if let Some(note) = h.availability.note() {
+                    match network {
+                        Some(net) if !h.availability.runs_on(net) => report
+                            .errors
+                            .push(format!("import `{name}` is not available on the {net:?} network: {note}")),
+                        _ => report.warnings.push(format!("import `{name}`: {note}")),
+                    }
                 }
             }
         }

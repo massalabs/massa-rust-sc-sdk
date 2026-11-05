@@ -64,6 +64,10 @@ struct BuildArgs {
     verbose: bool,
     #[arg(short, long)]
     quiet: bool,
+    /// Fail when the module imports a host function this network lacks
+    /// (`massa`: no `mimc`; `clayer`: no paginated datastore keys; `any`: neither).
+    #[arg(long, value_enum)]
+    network: Option<abi::Network>,
     /// Extra arguments passed to `cargo build` (after `--`).
     #[arg(last = true)]
     cargo_args: Vec<String>,
@@ -74,6 +78,9 @@ struct CheckArgs {
     /// Module(s) to inspect.
     #[arg(required = true)]
     files: Vec<PathBuf>,
+    /// Fail when the module imports a host function this network lacks.
+    #[arg(long, value_enum)]
+    network: Option<abi::Network>,
     #[arg(short, long)]
     verbose: bool,
 }
@@ -111,12 +118,13 @@ fn main() -> Result<()> {
             verbose: a.verbose,
             quiet: a.quiet,
             cargo_args: a.cargo_args,
+            network: a.network,
         }),
         Command::Check(a) => {
             let mut failed = false;
             for file in &a.files {
                 let bytes = std::fs::read(file).with_context(|| format!("reading {}", file.display()))?;
-                let report = inspect::inspect(&bytes)?;
+                let report = inspect::inspect(&bytes, a.network)?;
                 println!("{}", file.display());
                 inspect::print_report(&report, a.verbose);
                 failed |= !report.errors.is_empty();

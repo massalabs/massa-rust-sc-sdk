@@ -45,10 +45,12 @@ impl fmt::Display for ArgsError {
     }
 }
 
+/// Result of a deserialization.
 pub type Result<T> = core::result::Result<T, ArgsError>;
 
 /// Types that can be appended to [`Args`].
 pub trait ArgsEncode {
+    /// Append the encoding of `self` to `out`.
     fn encode_into(&self, out: &mut Vec<u8>);
 
     /// Standalone encoding (same bytes as `Args::new().add(self)`).
@@ -61,6 +63,7 @@ pub trait ArgsEncode {
 
 /// Types that can be read from [`Args`].
 pub trait ArgsDecode: Sized {
+    /// Read a value at the current offset of `args`, advancing it.
     fn decode(args: &mut Args) -> Result<Self>;
 
     /// Decode a standalone value from `bytes` (ignores trailing data).
@@ -74,16 +77,23 @@ pub trait ArgsDecode: Sized {
 /// are serialized as the concatenation of their fields, in declaration order,
 /// with `#[derive(Serializable)]`:
 ///
-/// ```ignore
-/// #[derive(Serializable)]
+/// ```
+/// # use massa_sc_sdk::prelude::*;
+/// #[derive(Serializable, PartialEq, Debug)]
 /// struct Order { owner: Address, amount: u64, memo: String }
+///
+/// let order = Order { owner: Address::from("AU1..."), amount: 5, memo: "hi".into() };
 /// let bytes = Args::new().add(&order).into_bytes();   // or order.serialize()
 /// let back: Order = Args::from(bytes).next()?;        // or Order::deserialize(&bytes)?
+/// assert_eq!(back, order);
+/// # Ok::<(), ArgsError>(())
 /// ```
 pub trait Serializable: ArgsEncode + ArgsDecode {
+    /// Serialized bytes (the [`Args`] encoding).
     fn serialize(&self) -> Vec<u8> {
         self.encode()
     }
+    /// Decode from serialized bytes.
     fn deserialize(bytes: &[u8]) -> Result<Self> {
         Self::decode_bytes(bytes)
     }
@@ -143,67 +153,87 @@ impl Args {
     pub fn must_next<T: ArgsDecode>(&mut self, what: &str) -> T {
         match T::decode(self) {
             Ok(v) => v,
-            Err(_) => crate::abort(&alloc::format!("Can't deserialize {what}.")),
+            Err(_) => crate::abort(&crate::concat_str(&["Can't deserialize ", what, "."])),
         }
     }
 
+    /// Read the next `bool`.
     pub fn next_bool(&mut self) -> Result<bool> {
         self.next()
     }
+    /// Read the next `u8`.
     pub fn next_u8(&mut self) -> Result<u8> {
         self.next()
     }
+    /// Read the next `i8`.
     pub fn next_i8(&mut self) -> Result<i8> {
         self.next()
     }
+    /// Read the next `u16`.
     pub fn next_u16(&mut self) -> Result<u16> {
         self.next()
     }
+    /// Read the next `i16`.
     pub fn next_i16(&mut self) -> Result<i16> {
         self.next()
     }
+    /// Read the next `u32`.
     pub fn next_u32(&mut self) -> Result<u32> {
         self.next()
     }
+    /// Read the next `i32`.
     pub fn next_i32(&mut self) -> Result<i32> {
         self.next()
     }
+    /// Read the next `u64`.
     pub fn next_u64(&mut self) -> Result<u64> {
         self.next()
     }
+    /// Read the next `i64`.
     pub fn next_i64(&mut self) -> Result<i64> {
         self.next()
     }
+    /// Read the next `u128`.
     pub fn next_u128(&mut self) -> Result<u128> {
         self.next()
     }
+    /// Read the next `i128`.
     pub fn next_i128(&mut self) -> Result<i128> {
         self.next()
     }
+    /// Read the next `U256` (32 bytes, little-endian).
     pub fn next_u256(&mut self) -> Result<U256> {
         self.next()
     }
+    /// Read the next `f32`.
     pub fn next_f32(&mut self) -> Result<f32> {
         self.next()
     }
+    /// Read the next `f64`.
     pub fn next_f64(&mut self) -> Result<f64> {
         self.next()
     }
+    /// Read the next string (`u32` length + UTF-8).
     pub fn next_string(&mut self) -> Result<String> {
         self.next()
     }
+    /// Read the next byte string (`u32` length + bytes).
     pub fn next_bytes(&mut self) -> Result<Vec<u8>> {
         self.next()
     }
+    /// Read the next [`Address`](crate::Address) (encoded as a string).
     pub fn next_address(&mut self) -> Result<crate::Address> {
         self.next()
     }
+    /// Read the next [`Serializable`] structure.
     pub fn next_serializable<T: Serializable>(&mut self) -> Result<T> {
         T::decode(self)
     }
+    /// Read the next array (`u32` byte length + elements): fixed-size numbers, `U256`, strings, structures...
     pub fn next_array<T: ArgsDecode>(&mut self) -> Result<Vec<T>> {
         self.next()
     }
+    /// Read the next array of strings.
     pub fn next_string_array(&mut self) -> Result<Vec<String>> {
         self.next()
     }
@@ -213,15 +243,24 @@ impl Args {
         &self.data
     }
 
+    /// Copy of the serialized bytes (the AssemblyScript `args.serialize()`).
+    /// To nest an `Args` into another one, add these bytes:
+    /// `outer.add(inner.serialize())`, read back with `next_bytes()`.
+    pub fn serialize(&self) -> Vec<u8> {
+        self.data.clone()
+    }
+
     /// Consume into the serialized bytes.
     pub fn into_bytes(self) -> Vec<u8> {
         self.data
     }
 
+    /// Number of serialized bytes.
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
+    /// `true` when there are no serialized bytes.
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
@@ -289,19 +328,6 @@ impl AsRef<[u8]> for Args {
     }
 }
 
-/// `Args` nested inside `Args` are encoded as raw bytes (`u32` length prefix).
-impl ArgsEncode for Args {
-    fn encode_into(&self, out: &mut Vec<u8>) {
-        self.data.as_slice().encode_into(out)
-    }
-}
-
-impl ArgsDecode for Args {
-    fn decode(args: &mut Args) -> Result<Self> {
-        Ok(Args::from_bytes(Vec::<u8>::decode(args)?))
-    }
-}
-
 // ---------------------------------------------------------------------------
 // primitives
 // ---------------------------------------------------------------------------
@@ -313,6 +339,7 @@ trait FixedDecode: Sized {
 macro_rules! impl_int {
     ($($t:ty => $name:literal),* $(,)?) => {$(
         impl ArgsEncode for $t {
+            /// Append the encoding of `self` to `out`.
             #[inline]
             fn encode_into(&self, out: &mut Vec<u8>) {
                 out.extend_from_slice(&self.to_le_bytes());
@@ -342,6 +369,7 @@ impl_int!(
 );
 
 impl ArgsEncode for U256 {
+    /// Append the encoding of `self` to `out`.
     fn encode_into(&self, out: &mut Vec<u8>) {
         out.extend_from_slice(&self.to_le_bytes());
     }
@@ -357,6 +385,7 @@ impl ArgsDecode for U256 {
 }
 
 impl ArgsEncode for I256 {
+    /// Append the encoding of `self` to `out`.
     fn encode_into(&self, out: &mut Vec<u8>) {
         out.extend_from_slice(&self.to_le_bytes());
     }
@@ -372,6 +401,7 @@ impl ArgsDecode for I256 {
 }
 
 impl ArgsEncode for bool {
+    /// Append the encoding of `self` to `out`.
     fn encode_into(&self, out: &mut Vec<u8>) {
         out.push(*self as u8);
     }
@@ -388,6 +418,7 @@ impl ArgsDecode for bool {
 // ---------------------------------------------------------------------------
 
 impl ArgsEncode for str {
+    /// Append the encoding of `self` to `out`.
     fn encode_into(&self, out: &mut Vec<u8>) {
         (self.len() as u32).encode_into(out);
         out.extend_from_slice(self.as_bytes());
@@ -395,6 +426,7 @@ impl ArgsEncode for str {
 }
 
 impl ArgsEncode for String {
+    /// Append the encoding of `self` to `out`.
     fn encode_into(&self, out: &mut Vec<u8>) {
         self.as_str().encode_into(out)
     }
@@ -408,6 +440,7 @@ impl ArgsDecode for String {
 }
 
 impl<T: ArgsEncode> ArgsEncode for [T] {
+    /// Append the encoding of `self` to `out`.
     fn encode_into(&self, out: &mut Vec<u8>) {
         let len_pos = out.len();
         out.extend_from_slice(&[0, 0, 0, 0]);
@@ -420,12 +453,14 @@ impl<T: ArgsEncode> ArgsEncode for [T] {
 }
 
 impl<T: ArgsEncode> ArgsEncode for Vec<T> {
+    /// Append the encoding of `self` to `out`.
     fn encode_into(&self, out: &mut Vec<u8>) {
         self.as_slice().encode_into(out)
     }
 }
 
 impl<T: ArgsEncode, const N: usize> ArgsEncode for [T; N] {
+    /// Append the encoding of `self` to `out`.
     fn encode_into(&self, out: &mut Vec<u8>) {
         self.as_slice().encode_into(out)
     }
@@ -463,20 +498,24 @@ impl<T: ArgsDecode + Default + Copy, const N: usize> ArgsDecode for [T; N] {
 }
 
 impl<T: ArgsEncode + ?Sized> ArgsEncode for &T {
+    /// Append the encoding of `self` to `out`.
     fn encode_into(&self, out: &mut Vec<u8>) {
         (**self).encode_into(out)
     }
 }
 
 impl<T: ArgsEncode + ?Sized> ArgsEncode for &mut T {
+    /// Append the encoding of `self` to `out`.
     fn encode_into(&self, out: &mut Vec<u8>) {
         (**self).encode_into(out)
     }
 }
 
 impl<T: ArgsEncode> ArgsEncode for Option<T> {
-    /// `Option` is encoded as a `bool` flag followed by the value when `Some`.
-    /// (Not part of the as-types format; handy between Rust contracts.)
+    /// `Option` is encoded as a `bool` flag followed by the value when `Some`,
+    /// i.e. what an AssemblyScript or TypeScript side writes as
+    /// `add(present).add(value)` and reads as `nextBool()` then the value.
+    /// `as-types` has no optional type of its own.
     fn encode_into(&self, out: &mut Vec<u8>) {
         match self {
             Some(v) => {
@@ -511,6 +550,7 @@ impl ArgsDecode for () {
 macro_rules! impl_tuple {
     ($($name:ident),+) => {
         impl<$($name: ArgsEncode),+> ArgsEncode for ($($name,)+) {
+            /// Append the encoding of `self` to `out`.
             #[allow(non_snake_case)]
             fn encode_into(&self, out: &mut Vec<u8>) {
                 let ($($name,)+) = self;
@@ -608,6 +648,7 @@ mod tests {
         value: u64,
     }
     impl ArgsEncode for Pair {
+        /// Append the encoding of `self` to `out`.
         fn encode_into(&self, out: &mut Vec<u8>) {
             self.key.encode_into(out);
             self.value.encode_into(out);
@@ -639,14 +680,21 @@ mod tests {
     fn address_option_tuple_nested_args() {
         let addr = Address::from("AU12UBnqTHDQALpocVBnkPNy7y5CndUJQTLutaVDDFgMJcq5kQiKq");
         let inner = Args::new().add(1u8);
-        let bytes =
-            Args::new().add(&addr).add(Some(3u16)).add(None::<u16>).add((1u8, "x")).add(&inner).into_bytes();
+        // Nesting is explicit, like `add(inner.serialize())` in AssemblyScript.
+        let bytes = Args::new()
+            .add(&addr)
+            .add(Some(3u16))
+            .add(None::<u16>)
+            .add((1u8, "x"))
+            .add(inner.serialize())
+            .into_bytes();
         let mut r = Args::from(bytes);
         assert_eq!(r.next_address().unwrap(), addr);
         assert_eq!(r.next::<Option<u16>>().unwrap(), Some(3));
         assert_eq!(r.next::<Option<u16>>().unwrap(), None);
         assert_eq!(r.next::<(u8, String)>().unwrap(), (1, "x".to_string()));
-        assert_eq!(r.next::<Args>().unwrap(), inner);
+        assert_eq!(Args::from(r.next_bytes().unwrap()), inner);
+        assert!(r.is_exhausted());
     }
 
     #[test]

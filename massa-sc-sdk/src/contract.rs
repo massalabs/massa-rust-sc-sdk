@@ -99,14 +99,18 @@ pub fn assert_is_smart_contract(address: &Address) {
 /// once `address` (or its datastore `key`) was modified within the validity range.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct MessageFilter {
+    /// Address whose modification triggers the message (`None` = no filter).
     pub address: Option<Address>,
+    /// Datastore key of `address` whose modification triggers the message (empty = any change of the address).
     pub key: Vec<u8>,
 }
 
 impl MessageFilter {
+    /// Trigger on any change of `address`.
     pub fn address(address: Address) -> Self {
         Self { address: Some(address), key: Vec::new() }
     }
+    /// Trigger on a change of `key` in the datastore of `address`.
     pub fn datastore_key(address: Address, key: impl Into<Vec<u8>>) -> Self {
         Self { address: Some(address), key: key.into() }
     }
