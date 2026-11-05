@@ -38,6 +38,9 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+# Standalone project, even when created inside another cargo workspace.
+[workspace]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
