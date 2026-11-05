@@ -5,7 +5,8 @@
 //! * [`entrypoints`] + [`crate::export_mrc1155!`]: `version`, `uri`,
 //!   `balanceOf`, `balanceOfBatch`, `setApprovalForAll`, `isApprovedForAll`,
 //!   `safeTransferFrom`, `safeBatchTransferFrom`.
-//! * [`metadata`] + [`crate::export_mrc1155_metadata!`]: per-token URIs.
+//! * [`metadata`] + [`crate::export_mrc1155_metadata!`]: the same set with
+//!   per-token URIs (use one of the two macros).
 //! * [`mintable`] + [`crate::export_mrc1155_mintable!`]: `mint`, `mintBatch`
 //!   (role `minter`, see [`crate::access_control`]).
 //! * [`burnable`] + [`crate::export_mrc1155_burnable!`]: `burn`, `burnBatch`.
@@ -118,17 +119,14 @@ pub mod entrypoints {
     }
 }
 
-/// Export the base MRC1155 entry points.
+/// Entry points shared by the base and metadata variants (everything but `uri`).
+#[doc(hidden)]
 #[macro_export]
-macro_rules! export_mrc1155 {
+macro_rules! __export_mrc1155_common {
     () => {
         #[::massa_sc_sdk::export(name = "version")]
         pub fn __std_version() -> ::massa_sc_sdk::prelude::Vec<u8> {
             $crate::mrc1155::entrypoints::version()
-        }
-        #[::massa_sc_sdk::export(name = "uri")]
-        pub fn __std_uri(args: ::massa_sc_sdk::Args) -> ::massa_sc_sdk::prelude::String {
-            $crate::mrc1155::entrypoints::uri(args)
         }
         #[::massa_sc_sdk::export(name = "balanceOf")]
         pub fn __std_balance_of(args: ::massa_sc_sdk::Args) -> ::massa_sc_sdk::U256 {
@@ -153,6 +151,21 @@ macro_rules! export_mrc1155 {
         #[::massa_sc_sdk::export(name = "safeBatchTransferFrom")]
         pub fn __std_safe_batch_transfer_from(args: ::massa_sc_sdk::Args) {
             $crate::mrc1155::entrypoints::safe_batch_transfer_from(args)
+        }
+    };
+}
+
+/// Export the base MRC1155 entry points (`version`, `uri`, `balanceOf`,
+/// `balanceOfBatch`, `setApprovalForAll`, `isApprovedForAll`,
+/// `safeTransferFrom`, `safeBatchTransferFrom`). Use
+/// [`crate::export_mrc1155_metadata!`] *instead* for per-token URIs.
+#[macro_export]
+macro_rules! export_mrc1155 {
+    () => {
+        $crate::__export_mrc1155_common!();
+        #[::massa_sc_sdk::export(name = "uri")]
+        pub fn __std_uri(args: ::massa_sc_sdk::Args) -> ::massa_sc_sdk::prelude::String {
+            $crate::mrc1155::entrypoints::uri(args)
         }
     };
 }

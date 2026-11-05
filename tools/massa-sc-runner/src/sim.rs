@@ -3,6 +3,8 @@
 //! events, coins, op-datastore, hashes, deferred calls bookkeeping).
 
 #[cfg(feature = "clayer")]
+use clayer_proto_rs as massa_proto_rs;
+#[cfg(feature = "clayer")]
 use clayer_sc_runtime as runtime;
 use massa_proto_rs::massa::model::v1::{AddressCategory, ComparisonResult, NativeAmount, NativeTime, Slot};
 #[cfg(feature = "massa")]
@@ -157,7 +159,8 @@ impl Interface for SimInterface {
         Ok(())
     }
     fn decrement_recursion_counter(&self) -> Result<()> {
-        self.st().recursion = self.st().recursion.saturating_sub(1);
+        let mut st = self.st();
+        st.recursion = st.recursion.saturating_sub(1);
         Ok(())
     }
     fn get_interface_version(&self) -> Result<u32> {

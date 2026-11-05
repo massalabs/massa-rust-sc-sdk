@@ -59,10 +59,12 @@ pub mod entrypoints {
     }
 }
 
-/// Export the metadata-aware `uri(id)` (use instead of the base `uri`).
+/// Export the base MRC1155 entry points with the metadata-aware `uri(id)`
+/// (replaces [`crate::export_mrc1155!`], do not use both).
 #[macro_export]
 macro_rules! export_mrc1155_metadata {
     () => {
+        $crate::__export_mrc1155_common!();
         #[::massa_sc_sdk::export(name = "uri")]
         pub fn __std_uri(args: ::massa_sc_sdk::Args) -> ::massa_sc_sdk::prelude::String {
             $crate::mrc1155::metadata::entrypoints::uri(args)

@@ -13,15 +13,16 @@ publish = false
 [features]
 default = ["massa"]
 # Massa runtime (massa-sc-runtime).
-massa = ["dep:massa-sc-runtime"]
+massa = ["dep:massa-sc-runtime", "dep:massa-proto-rs"]
 # C-Layer runtime (c-layer-sc-runtime): adds the `assembly_script_hash_mimc` host function.
-clayer = ["dep:clayer-sc-runtime"]
+clayer = ["dep:clayer-sc-runtime", "dep:clayer-proto-rs"]
 
 [dependencies]
 # Pin the runtime revision used by the node you target.
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", rev = "b40ec3899ca7eec92ee206d50c701157f7f429b4", features = ["testing"], optional = true }
 clayer-sc-runtime = { package = "massa-sc-runtime", git = "https://github.com/massalabs/c-layer-sc-runtime", rev = "b84be8efe714ba4d207a2781f0363b4924df6f9d", features = ["testing"], optional = true }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", rev = "0bcc52f40d2d7d596eeaf8f8713364bd7c15594b" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", rev = "0bcc52f40d2d7d596eeaf8f8713364bd7c15594b", optional = true }
+clayer-proto-rs = { package = "massa-proto-rs", git = "https://github.com/massalabs/massa-proto-rs.git", rev = "f54e4395a2323aecd1b47b092bca345c51fae9b8", optional = true }
 anyhow = "1"
 sha2 = "0.10"
 sha3 = "0.10"
