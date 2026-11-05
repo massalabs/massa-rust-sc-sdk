@@ -18,10 +18,15 @@ pub trait Bitmask:
     + Not<Output = Self>
     + Shl<u8, Output = Self>
 {
+    /// Number of bits, i.e. of distinct permissions.
     const BITS: u8;
+    /// No permission.
     const ZERO: Self;
+    /// The first permission bit.
     const ONE: Self;
+    /// Little-endian storage encoding.
     fn to_bytes(self) -> Vec<u8>;
+    /// Decode the storage encoding.
     fn from_bytes(bytes: &[u8]) -> Option<Self>;
 }
 
@@ -31,7 +36,9 @@ macro_rules! impl_bitmask {
             const BITS: u8 = <$t>::BITS as u8;
             const ZERO: Self = 0;
             const ONE: Self = 1;
+            /// Little-endian storage encoding.
             fn to_bytes(self) -> Vec<u8> { self.to_le_bytes().to_vec() }
+            /// Decode the storage encoding.
             fn from_bytes(bytes: &[u8]) -> Option<Self> {
                 bytes.try_into().ok().map(<$t>::from_le_bytes)
             }
@@ -46,12 +53,15 @@ impl_bitmask!(u8, u16, u32, u64);
 /// Permissions themselves are not stored: declare them in the same order at
 /// every execution (typically as statics at the top of the contract).
 ///
-/// ```ignore
+/// ```
+/// # use massa_sc_sdk::{context, mock, security::AccessControl};
+/// # mock::reset();
 /// let mut acl = AccessControl::<u8>::new(1);
 /// let admin = acl.new_permission("admin");
 /// let user = acl.new_permission("user");
-/// acl.grant_permission(admin, &caller);
+/// acl.grant_permission(admin, &context::caller());
 /// acl.must_have_permission(admin, &context::caller());
+/// assert!(!acl.has_permission(user, &context::caller()));
 /// ```
 pub struct AccessControl<T: Bitmask = u8> {
     module_id: u8,

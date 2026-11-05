@@ -6,11 +6,17 @@ use massa_sc_sdk::prelude::*;
 
 use crate::mrc20::internals::read_u256;
 
+/// Datastore key of the collection name.
 pub const NAME_KEY: &[u8] = &[0x01];
+/// Datastore key of the collection symbol.
 pub const SYMBOL_KEY: &[u8] = &[0x02];
+/// Prefix of balance entries: `[0x03] ++ owner`.
 pub const BALANCE_KEY_PREFIX: &[u8] = &[0x03];
+/// Prefix of owner entries: `[0x04] ++ tokenId`.
 pub const OWNER_KEY_PREFIX: &[u8] = &[0x04];
+/// Prefix of per-token approvals: `[0x05] ++ tokenId`.
 pub const ALLOWANCE_KEY_PREFIX: &[u8] = &[0x05];
+/// Prefix of operator approvals: `[0x06] ++ owner ++ operator`.
 pub const OPERATOR_ALLOWANCE_KEY_PREFIX: &[u8] = &[0x06];
 
 fn concat(parts: &[&[u8]]) -> Vec<u8> {
@@ -21,23 +27,28 @@ fn concat(parts: &[&[u8]]) -> Vec<u8> {
     v
 }
 
+/// Store the collection name and symbol.
 pub fn constructor(name: &str, symbol: &str) {
     storage::set(NAME_KEY, name);
     storage::set(SYMBOL_KEY, symbol);
 }
 
+/// Datastore key of the balance of `owner`.
 pub fn balance_key(owner: &Address) -> Vec<u8> {
     concat(&[BALANCE_KEY_PREFIX, owner.as_bytes()])
 }
 
+/// Datastore key of the owner of `token_id`.
 pub fn owner_key(token_id: U256) -> Vec<u8> {
     concat(&[OWNER_KEY_PREFIX, &token_id.to_le_bytes()])
 }
 
+/// Datastore key of the approval of `token_id`.
 pub fn allowance_key(token_id: U256) -> Vec<u8> {
     concat(&[ALLOWANCE_KEY_PREFIX, &token_id.to_le_bytes()])
 }
 
+/// Datastore key of the approval of `operator` by `owner`.
 pub fn operator_allowance_key(owner: &Address, operator: &Address) -> Vec<u8> {
     concat(&[OPERATOR_ALLOWANCE_KEY_PREFIX, owner.as_bytes(), operator.as_bytes()])
 }
@@ -46,10 +57,12 @@ fn read_address(bytes: Vec<u8>) -> Address {
     Address::from(String::from_utf8_lossy(&bytes).into_owned())
 }
 
+/// Collection name (empty when unset).
 pub fn name() -> String {
     storage::try_get(NAME_KEY).map(|b| String::from_utf8_lossy(&b).into_owned()).unwrap_or_default()
 }
 
+/// Collection symbol (empty when unset).
 pub fn symbol() -> String {
     storage::try_get(SYMBOL_KEY).map(|b| String::from_utf8_lossy(&b).into_owned()).unwrap_or_default()
 }
@@ -69,10 +82,12 @@ pub fn get_approved(token_id: U256) -> Option<Address> {
     storage::try_get(allowance_key(token_id)).map(read_address)
 }
 
+/// `true` when `operator` is the approved address of `token_id`.
 pub fn is_approved(operator: &Address, token_id: U256) -> bool {
     get_approved(token_id).is_some_and(|a| &a == operator)
 }
 
+/// `true` when `operator` may move every token of `owner`.
 pub fn is_approved_for_all(owner: &Address, operator: &Address) -> bool {
     storage::try_get(operator_allowance_key(owner, operator)).is_some_and(|b| b.first() == Some(&1))
 }

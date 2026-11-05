@@ -111,8 +111,9 @@ impl InterfaceClone for SimInterface {
     }
 }
 
-fn hash_for_address(seed: &[u8]) -> String {
-    let h = blake3::hash(seed);
+/// Deterministic contract address `n` (valid base58check form, `AS` prefix).
+pub fn generated_address(n: u64) -> String {
+    let h = blake3::hash(&n.to_le_bytes());
     let mut v = vec![0u8]; // version 0
     v.extend_from_slice(h.as_bytes());
     format!("AS{}", bs58_check(&v))
@@ -252,7 +253,7 @@ impl Interface for SimInterface {
     fn create_module(&self, module: &[u8]) -> Result<String> {
         let mut st = self.st();
         st.sc_counter += 1;
-        let addr = hash_for_address(&st.sc_counter.to_le_bytes());
+        let addr = generated_address(1_000_000 + st.sc_counter);
         st.ledger.insert(
             addr.clone(),
             Account { balance: 0, bytecode: module.to_vec(), datastore: BTreeMap::new() },

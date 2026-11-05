@@ -14,16 +14,19 @@ use crate::storage;
 
 /// Produces a sequence of unique storage keys.
 pub trait KeySequence {
+    /// The next unused key.
     fn next_key(&mut self) -> Vec<u8>;
 }
 
 /// A [`KeySequence`] that simply counts: keys are the [`Args`] encoding of a
 /// counter (`u8` by default, so 1-byte keys).
 pub struct KeyIncrementer<T = u8> {
+    /// Value of the next key.
     pub counter: T,
 }
 
 impl<T> KeyIncrementer<T> {
+    /// Start counting at `start`.
     pub const fn new(start: T) -> Self {
         Self { counter: start }
     }
@@ -38,6 +41,7 @@ impl<T: Default> Default for KeyIncrementer<T> {
 macro_rules! impl_incrementer {
     ($($t:ty),*) => {$(
         impl KeySequence for KeyIncrementer<$t> {
+            /// The next unused key.
             fn next_key(&mut self) -> Vec<u8> {
                 let key = self.counter.encode();
                 self.counter = self.counter.checked_add(1).expect("key sequence exhausted");
@@ -50,10 +54,13 @@ impl_incrementer!(u8, u16, u32, u64);
 
 /// A single typed value stored under a fixed key.
 ///
-/// ```ignore
-/// static TOTAL: ConstantManager<u64> = ConstantManager::with_key(&[0]);
-/// TOTAL.set(&42);
-/// assert_eq!(TOTAL.must_value(), 42);
+/// ```
+/// # use massa_sc_sdk::{helpers::{ConstantManager, KeyIncrementer}, mock};
+/// # mock::reset();
+/// let mut keys = KeyIncrementer::<u8>::new(0);
+/// let total: ConstantManager<u64> = ConstantManager::new(&mut keys); // key [0]
+/// total.set(&42);
+/// assert_eq!(total.must_value(), 42);
 /// ```
 pub struct ConstantManager<T> {
     key: Vec<u8>,
@@ -71,10 +78,12 @@ impl<T: ArgsEncode + ArgsDecode> ConstantManager<T> {
         Self { key: key.into(), _t: PhantomData }
     }
 
+    /// The storage key.
     pub fn key(&self) -> &[u8] {
         &self.key
     }
 
+    /// `true` when a value is stored.
     pub fn exists(&self) -> bool {
         storage::has(&self.key)
     }
@@ -92,10 +101,12 @@ impl<T: ArgsEncode + ArgsDecode> ConstantManager<T> {
         storage::try_get(&self.key).and_then(|b| T::decode_bytes(&b).ok())
     }
 
+    /// Store `value`.
     pub fn set(&self, value: &T) {
         storage::set(&self.key, value.encode())
     }
 
+    /// Delete the value; returns whether it existed.
     pub fn delete(&self) -> bool {
         storage::del_if_exists(&self.key)
     }
@@ -114,18 +125,22 @@ impl<K: ArgsEncode, V: ArgsEncode + ArgsDecode> MapManager<K, V> {
         Self::with_prefix(seq.next_key())
     }
 
+    /// Use an explicit key prefix.
     pub fn with_prefix(prefix: impl Into<Vec<u8>>) -> Self {
         Self { prefix: prefix.into(), _k: PhantomData, _v: PhantomData }
     }
 
+    /// The key prefix.
     pub fn prefix(&self) -> &[u8] {
         &self.prefix
     }
 
+    /// Datastore key of `key`: `prefix ++ Args(key)`.
     pub fn storage_key(&self, key: &K) -> Vec<u8> {
         Args::from_bytes(self.prefix.clone()).add(key).into_bytes()
     }
 
+    /// `true` when `key` is in the map.
     pub fn contains(&self, key: &K) -> bool {
         storage::has(self.storage_key(key))
     }
@@ -143,10 +158,12 @@ impl<K: ArgsEncode, V: ArgsEncode + ArgsDecode> MapManager<K, V> {
         storage::try_get(self.storage_key(key)).and_then(|b| V::decode_bytes(&b).ok())
     }
 
+    /// Insert or overwrite `key`.
     pub fn set(&self, key: &K, value: &V) {
         storage::set(self.storage_key(key), value.encode())
     }
 
+    /// Delete `key`; returns whether it existed.
     pub fn delete(&self, key: &K) -> bool {
         storage::del_if_exists(self.storage_key(key))
     }

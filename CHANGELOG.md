@@ -2,6 +2,30 @@
 
 ## 0.2.0
 
+### Interoperability
+
+* Interoperability suite (`interop/`, `tools/massa-sc-runner/tests/interop.rs`):
+  AssemblyScript fixtures compiled from the real `@massalabs/massa-as-sdk` and
+  `@massalabs/sc-standards` run with their Rust counterparts in the Massa
+  runtime; `Args` round trips for every type, return idioms, cross calls in
+  every direction, byte-identical datastores and events for MRC20/721/1155,
+  ownership, roles and every storage helper. Run in CI against
+  `massa-standards` main and the published package.
+* `PersistentMap` stores integers, floats and booleans on 8 bytes like the
+  AssemblyScript one (`StorageValue::to_map_value`); `#[derive(Serializable)]`
+  implements `StorageValue`.
+* `Args::serialize()` returns the raw bytes like AssemblyScript; nesting an
+  `Args` is explicit (`add(inner.serialize())`).
+* `massa-sc-runner` is also a library (`Runner`): several contracts, calls
+  between them, bytecode swaps on a datastore; CLI gains `--contract`,
+  `--at`, `--swap`.
+* `cargo massa build/check --network massa|clayer|any`; `cargo massa new`
+  ships a massa-web3 deploy script.
+* Every public item of `massa-sc-sdk` and `massa-sc-standards` is documented
+  (`missing_docs` is denied); doc examples are compiled tests.
+
+### Rewrite
+
 Complete rewrite. The 0.1 prototype targeted the protobuf "wasmv1" ABI,
 which Massa disabled (MIP-0002) without ever deploying a contract with it.
 

@@ -6,10 +6,12 @@ use massa_sc_sdk::prelude::*;
 use super::internals;
 use crate::access_control::only_role;
 
+/// Role allowed to mint.
 pub const MINTER_ROLE: &str = "minter";
 
 pub use internals::{mint, mint_batch};
 
+/// Entry points taking serialized arguments.
 pub mod entrypoints {
     use super::*;
 

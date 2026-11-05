@@ -5,3 +5,4 @@
 **/build/
 *.wasm
 .env
+node_modules

@@ -39,7 +39,8 @@ pub fn transfer(mut args: Args) {
 
 | as-types | Rust |
 |---|---|
-| `new Args().add(x).add(y).serialize()` | `Args::new().add(x).add(y)` (pass `&args` or `args.as_bytes()`) |
+| `new Args().add(x).add(y).serialize()` | `Args::new().add(x).add(y)` (`args.serialize()` / `as_bytes()` for the bytes; `call` accepts the `Args` directly) |
+| `add(inner.serialize())` (nested Args) | `add(inner.serialize())`, read back with `Args::from(args.next_bytes()?)` |
 | `args.nextString().unwrap()` | `args.next_string()?` or `args.next::<String>()?` |
 | `args.nextU256()` | `args.next_u256()` (`U256` from `ethnum`) |
 | `args.nextSerializable<T>()` | `args.next::<T>()` with `#[derive(Serializable)]` |
@@ -68,7 +69,7 @@ struct Order { owner: Address, amount: u64, memo: String }
 | `Storage.setOf(addr, k, v)` | `storage::set_of(&addr, k, v)` |
 | `Storage.getKeys(prefix)` | `storage::get_keys(prefix)` (≤ 500 keys) |
 | `Storage.getKeysPage(prefix, cursor, n)` | `storage::get_keys_page(prefix, cursor, n)`, `for_each_key` |
-| `PersistentMap<K, V>` | `collections::PersistentMap<K, V>` (`StorageValue` encoding) |
+| `PersistentMap<K, V>` | `collections::PersistentMap<K, V>` (same keys and bytes; integers, floats and booleans on 8 bytes like AS) |
 | `ConstantManager`, `MapManager`, `KeyIncrementer` | `helpers::*` |
 
 ## Context, coins, calls
@@ -128,6 +129,10 @@ Storage keys, event strings and entry-point names are the same, so
 | reading events | `mock::events()` |
 
 Tests run natively, in parallel, each with its own VM.
+
+Everything in these tables is covered by the
+[interoperability suite](interop.md), which runs AssemblyScript and Rust
+contracts together in the real runtime.
 
 ## Build and deploy
 

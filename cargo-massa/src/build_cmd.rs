@@ -10,6 +10,7 @@ use std::process::Command;
 use anyhow::{anyhow, bail, Context, Result};
 use cargo_metadata::{MetadataCommand, Package};
 
+use crate::abi::Network;
 use crate::inspect;
 
 pub const TARGET: &str = "wasm32v1-none";
@@ -29,6 +30,7 @@ pub struct BuildOptions {
     pub verbose: bool,
     pub quiet: bool,
     pub cargo_args: Vec<String>,
+    pub network: Option<Network>,
 }
 
 const SEP: char = '\x1f';
@@ -212,7 +214,7 @@ pub fn run(opts: BuildOptions) -> Result<()> {
             }
             let out_path = out_dir.join(&file_name);
             std::fs::write(&out_path, &bytes).with_context(|| format!("writing {}", out_path.display()))?;
-            let report = inspect::inspect(&bytes)?;
+            let report = inspect::inspect(&bytes, opts.network)?;
             println!(
                 "{} -> {} ({} bytes{})",
                 pkg.name,

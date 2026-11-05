@@ -2,16 +2,62 @@
 //! `src/as_execution/context.rs`) with their wasm signatures.
 //! `i` = i32, `I` = i64, `f` = f64.
 
+/// Networks a module can target.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+pub enum Network {
+    /// Massa (mainnet, buildnet...).
+    Massa,
+    /// C-Layer (a Massa fork with extra host functions, without MIP-0002 yet).
+    Clayer,
+    /// Both: every network-specific import is an error.
+    Any,
+}
+
+/// Where a host function is available.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Availability {
+    /// Every network.
+    All,
+    /// Massa nodes running execution version >= 2 (MIP-0002); not C-Layer yet.
+    MassaMip0002,
+    /// C-Layer nodes only.
+    ClayerOnly,
+}
+
+impl Availability {
+    /// Human-readable restriction, `None` when available everywhere.
+    pub fn note(self) -> Option<&'static str> {
+        match self {
+            Availability::All => None,
+            Availability::MassaMip0002 => {
+                Some("requires execution version >= 2 (MIP-0002); not available on C-Layer yet")
+            }
+            Availability::ClayerOnly => Some("C-Layer only; the module cannot be instantiated on Massa"),
+        }
+    }
+
+    /// Whether a module importing such a function can run on `network`.
+    pub fn runs_on(self, network: Network) -> bool {
+        match (self, network) {
+            (Availability::All, _) => true,
+            (_, Network::Any) => false,
+            (Availability::MassaMip0002, Network::Massa) => true,
+            (Availability::ClayerOnly, Network::Clayer) => true,
+            _ => false,
+        }
+    }
+}
+
 pub struct HostFn {
     pub module: &'static str,
     pub name: &'static str,
     pub params: &'static str,
     pub results: &'static str,
-    pub note: Option<&'static str>,
+    pub availability: Availability,
 }
 
 const fn f(module: &'static str, name: &'static str, params: &'static str, results: &'static str) -> HostFn {
-    HostFn { module, name, params, results, note: None }
+    HostFn { module, name, params, results, availability: Availability::All }
 }
 
 const fn n(
@@ -19,9 +65,9 @@ const fn n(
     name: &'static str,
     params: &'static str,
     results: &'static str,
-    note: &'static str,
+    availability: Availability,
 ) -> HostFn {
-    HostFn { module, name, params, results, note: Some(note) }
+    HostFn { module, name, params, results, availability }
 }
 
 pub const HOST_FUNCTIONS: &[HostFn] = &[
@@ -61,13 +107,7 @@ pub const HOST_FUNCTIONS: &[HostFn] = &[
     f("massa", "assembly_script_hash", "i", "i"),
     f("massa", "assembly_script_hash_sha256", "i", "i"),
     f("massa", "assembly_script_keccak256_hash", "i", "i"),
-    n(
-        "massa",
-        "assembly_script_hash_mimc",
-        "i",
-        "i",
-        "C-Layer only: the contract cannot be instantiated on Massa",
-    ),
+    n("massa", "assembly_script_hash_mimc", "i", "i", Availability::ClayerOnly),
     f("massa", "assembly_script_signature_verify", "iii", "i"),
     f("massa", "assembly_script_evm_signature_verify", "iii", "i"),
     f("massa", "assembly_script_evm_get_address_from_pubkey", "i", "i"),
@@ -88,20 +128,8 @@ pub const HOST_FUNCTIONS: &[HostFn] = &[
     f("massa", "assembly_script_get_op_keys_prefix", "i", "i"),
     f("massa", "assembly_script_get_keys", "i", "i"),
     f("massa", "assembly_script_get_keys_for", "ii", "i"),
-    n(
-        "massa",
-        "assembly_script_get_keys_paginated",
-        "iii",
-        "i",
-        "requires execution version >= 2 (MIP-0002)",
-    ),
-    n(
-        "massa",
-        "assembly_script_get_keys_for_paginated",
-        "iiii",
-        "i",
-        "requires execution version >= 2 (MIP-0002)",
-    ),
+    n("massa", "assembly_script_get_keys_paginated", "iii", "i", Availability::MassaMip0002),
+    n("massa", "assembly_script_get_keys_for_paginated", "iiii", "i", Availability::MassaMip0002),
     f("massa", "assembly_script_has_op_key", "i", "i"),
     f("massa", "assembly_script_get_op_data", "i", "i"),
     f("massa", "assembly_script_get_bytecode", "", "i"),

@@ -38,7 +38,7 @@ fn from_be_mod(bytes: &[u8; 32]) -> U256 {
 }
 
 pub fn hash(bytes: &[u8]) -> Result<[u8; 32], String> {
-    if bytes.len() % 32 != 0 && bytes.len() > 32 {
+    if bytes.len() & 31 != 0 && bytes.len() > 32 {
         return Err("Input length must less than 32 or a multiple of 32".into());
     }
     if bytes.len() > 64 * 32 {

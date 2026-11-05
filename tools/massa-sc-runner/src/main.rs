@@ -1,56 +1,45 @@
-//! Run a compiled Massa smart contract locally, inside the real Massa runtime
-//! (`massa-sc-runtime`: wasmer 4.3.6, gas metering, node limits), against an
-//! in-memory ledger. Prints return values, events, gas and the final state.
+//! Command-line front end of [`massa_sc_runner`].
 //!
 //! ```text
 //! massa-sc-runner build/counter.wasm constructor --args u64:10 --deploy \; increment --args u64:5 \; get
 //! ```
 
-#![allow(clippy::manual_is_multiple_of, clippy::field_reassign_with_default)]
-
-mod mimc;
-mod sim;
-
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Context, Result};
-use runtime::{run_function, run_main, CondomLimits, GasCosts, RuntimeModule};
-use sim::{Account, CallFrame, SimInterface, State};
+use massa_sc_runner::{CallOptions, Runner, DEFAULT_CONTRACT};
 
-#[cfg(feature = "clayer")]
-use clayer_sc_runtime as runtime;
-#[cfg(feature = "massa")]
-use massa_sc_runtime as runtime;
+const USAGE: &str = "\
+usage: massa-sc-runner <module.wasm> [global options] <step> [\\; <step> ...]
 
-/// Default originator / caller.
-pub const CALLER: &str = "AU1dQZLc618t4CNYWYiDnFnq585kifefr1EAcMi5jddJZGQJXJXL";
-/// Address at which the module under test is deployed.
-pub const SC: &str = "AS12FuajZtFN2JTcbDM7KuxVoDXMvkZTKFggjPMg2Lz1PTZN8aEEy";
+The module is deployed at the default contract address (no constructor call);
+each step is a function call on it, `main` runs it as an ExecuteSC operation.
 
-/// Limits applied by `massa-node` (`massa-node/src/main.rs`).
-fn node_condom_limits() -> CondomLimits {
-    CondomLimits {
-        max_exports: Some(512 + 512),
-        max_functions: Some(512 + 256),
-        max_signature_len: Some(64 + 8),
-        max_name_len: Some(256),
-        max_imports_len: Some(256 + 1),
-        max_table_initializers_len: Some(512),
-        max_passive_elements_len: Some(512),
-        max_passive_data_len: Some(512),
-        max_global_initializers_len: Some(512),
-        max_function_names_len: Some(256),
-        max_tables_count: Some(16),
-        max_memories_len: Some(1),
-        max_globals_len: Some(512),
-        max_custom_sections_len: Some(1),
-        max_custom_sections_data_len: Some(1_000_000),
-    }
-}
+global options:
+  --contract <name>=<file.wasm>  deploy another module; `@name` then stands for its address
+  --chain-id <N>                 chain id reported to the contracts (default 77, sandbox)
+  --opds <key>=<value>           operation datastore entry (values: hex, s:text, args:<spec>, @file)
+  --ds <key>=<value>             initial datastore entry of the main module
+  --balance <nanoMAS>            initial balance of the main module (default 0)
+  --gas <N>                      gas limit per call (default 1_000_000_000)
+  --quiet                        do not print the final state
+
+steps:
+  <function> [call options]      call an entry point
+  --swap <@name|address>=<file>  replace the bytecode at an address, keeping its datastore
+
+call options:
+  --at <@name|address>           target contract (default: the main module)
+  --args <spec>                  typed arguments: s:text,u64:42,u256:1000,bool:true,bytes:<hex>,addr:@name
+  --hex <hex>                    raw serialized arguments
+  --coins <nanoMAS>              coins sent with the call
+  --caller <@name|address>       caller address (default: a funded AU address)
+  --deploy                       the caller has write access to the target (deployment context)
+";
 
 fn parse_hex(s: &str) -> Result<Vec<u8>> {
     let s = s.trim_start_matches("0x");
-    if s.len() % 2 != 0 {
+    if s.len() & 1 == 1 {
         bail!("odd hex length");
     }
     (0..s.len())
@@ -59,10 +48,8 @@ fn parse_hex(s: &str) -> Result<Vec<u8>> {
         .collect()
 }
 
-/// Encode a comma-separated list of typed values with the `Args` layout:
-/// `s:text`, `addr:AU...`, `bool:true`, `u8:1`, `u16:`, `u32:`, `u64:`,
-/// `i32:`, `i64:`, `u128:`, `u256:`, `f64:`, `bytes:<hex>`, `hex:<raw hex appended as is>`.
-fn encode_args(spec: &str) -> Result<Vec<u8>> {
+/// Encode a comma-separated list of typed values with the `Args` layout.
+fn encode_args(spec: &str, names: &HashMap<String, String>) -> Result<Vec<u8>> {
     let mut out = Vec::new();
     if spec.trim().is_empty() {
         return Ok(out);
@@ -72,6 +59,7 @@ fn encode_args(spec: &str) -> Result<Vec<u8>> {
             item.split_once(':').ok_or_else(|| anyhow!("argument `{item}` must be `type:value`"))?;
         match ty.trim() {
             "s" | "str" | "string" | "addr" | "address" => {
+                let val = resolve(val, names);
                 out.extend_from_slice(&(val.len() as u32).to_le_bytes());
                 out.extend_from_slice(val.as_bytes());
             }
@@ -101,13 +89,21 @@ fn encode_args(spec: &str) -> Result<Vec<u8>> {
     Ok(out)
 }
 
-fn parse_value(s: &str) -> Result<Vec<u8>> {
+/// `@name` -> address of a `--contract`.
+fn resolve(s: &str, names: &HashMap<String, String>) -> String {
+    match s.strip_prefix('@') {
+        Some(name) => names.get(name).cloned().unwrap_or_else(|| s.to_string()),
+        None => s.to_string(),
+    }
+}
+
+fn parse_value(s: &str, names: &HashMap<String, String>) -> Result<Vec<u8>> {
     if let Some(rest) = s.strip_prefix("s:") {
         Ok(rest.as_bytes().to_vec())
     } else if let Some(rest) = s.strip_prefix("hex:") {
         parse_hex(rest)
     } else if let Some(rest) = s.strip_prefix("args:") {
-        encode_args(rest)
+        encode_args(rest, names)
     } else if let Some(rest) = s.strip_prefix('@') {
         std::fs::read(rest).with_context(|| format!("reading {rest}"))
     } else {
@@ -115,34 +111,16 @@ fn parse_value(s: &str) -> Result<Vec<u8>> {
     }
 }
 
-struct Call {
-    function: String,
-    param: Vec<u8>,
-    coins: u64,
-    deploy: bool,
-    caller: String,
+/// Call parameter: raw bytes, or a typed spec encoded once every `@name` is known.
+enum Param {
+    Raw(Vec<u8>),
+    Spec(String),
 }
 
-const USAGE: &str = "\
-usage: massa-sc-runner <module.wasm> [global options] <function> [call options] [\\; <function> [call options] ...]
-
-  function `main` is executed as an ExecuteSC operation by the caller.
-
-global options:
-  --chain-id <N>             chain id reported to the contract (default 77, sandbox)
-  --opds <key>=<value>       operation datastore entry (values: hex, s:text, hex:.., args:<spec>, @file)
-  --ds <key>=<value>         initial datastore entry of the contract
-  --balance <nanoMAS>        initial balance of the contract (default 0)
-  --gas <N>                  gas limit per call (default 1_000_000_000)
-  --quiet                    do not print the final state
-
-call options:
-  --args <spec>              typed arguments: s:text,u64:42,u256:1000,bool:true,bytes:<hex>,addr:AU..
-  --hex <hex>                raw serialized arguments
-  --coins <nanoMAS>          coins sent with the call
-  --caller <address>         caller address (default a funded AU address)
-  --deploy                   caller has write access to the contract (deployment context)
-";
+enum Step {
+    Call { function: String, target: String, param: Param, opts: CallOptions },
+    Swap { target: String, file: String },
+}
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -151,30 +129,48 @@ fn main() -> Result<()> {
         std::process::exit(2);
     }
     let wasm = std::fs::read(&args[1]).with_context(|| format!("reading {}", args[1]))?;
-    let mut chain_id = 77u64;
-    let mut op_ds = BTreeMap::new();
-    let mut initial_ds: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
-    let mut sc_balance = 0u64;
-    let mut gas_limit = 1_000_000_000u64;
+
+    let mut runner = Runner::new();
+    runner.trace = false;
+    let mut names: HashMap<String, String> = HashMap::new();
+    names.insert("main".into(), DEFAULT_CONTRACT.into());
     let mut quiet = false;
-    let mut calls: Vec<Call> = Vec::new();
+    let mut steps: Vec<Step> = Vec::new();
+    let mut extra_contracts: Vec<(String, String)> = Vec::new();
+    let mut initial_ds: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
+    let mut raw_opds: Vec<(String, String)> = Vec::new();
     let mut i = 2;
     while i < args.len() {
         let a = args[i].as_str();
         let next = |i: usize| -> Result<&String> {
             args.get(i + 1).ok_or_else(|| anyhow!("missing value after {a}"))
         };
+        fn last_call<'s>(
+            steps: &'s mut [Step],
+            option: &str,
+        ) -> Result<(&'s mut String, &'s mut Param, &'s mut CallOptions)> {
+            match steps.last_mut() {
+                Some(Step::Call { target, param, opts, .. }) => Ok((target, param, opts)),
+                _ => bail!("{option} must follow a function name"),
+            }
+        }
         match a {
+            "--contract" => {
+                let (name, file) =
+                    next(i)?.split_once('=').ok_or_else(|| anyhow!("--contract expects name=file"))?;
+                extra_contracts.push((name.to_string(), file.to_string()));
+                i += 2;
+            }
             "--chain-id" => {
-                chain_id = next(i)?.parse()?;
+                runner.set_chain_id(next(i)?.parse()?);
                 i += 2;
             }
             "--gas" => {
-                gas_limit = next(i)?.parse()?;
+                runner.gas_limit = next(i)?.parse()?;
                 i += 2;
             }
             "--balance" => {
-                sc_balance = next(i)?.parse()?;
+                runner.set_balance(DEFAULT_CONTRACT, next(i)?.parse()?);
                 i += 2;
             }
             "--quiet" => {
@@ -183,161 +179,144 @@ fn main() -> Result<()> {
             }
             "--opds" | "--ds" => {
                 let (k, v) = next(i)?.split_once('=').ok_or_else(|| anyhow!("{a} expects key=value"))?;
-                let entry = (parse_value(k)?, parse_value(v)?);
                 if a == "--opds" {
-                    op_ds.insert(entry.0, entry.1);
+                    raw_opds.push((k.to_string(), v.to_string()));
                 } else {
-                    initial_ds.push(entry);
+                    initial_ds.push((parse_value(k, &names)?, parse_value(v, &names)?));
                 }
                 i += 2;
             }
+            "--swap" => {
+                let (target, file) =
+                    next(i)?.split_once('=').ok_or_else(|| anyhow!("--swap expects address=file"))?;
+                steps.push(Step::Swap { target: target.to_string(), file: file.to_string() });
+                i += 2;
+            }
+            "--at" => {
+                let v = next(i)?.clone();
+                last_call(&mut steps, a)?.0.clone_from(&v);
+                i += 2;
+            }
             "--args" => {
-                calls.last_mut().ok_or_else(|| anyhow!("--args before any function"))?.param =
-                    encode_args(next(i)?)?;
+                let v = next(i)?.clone();
+                *last_call(&mut steps, a)?.1 = Param::Spec(v);
                 i += 2;
             }
             "--hex" => {
-                calls.last_mut().ok_or_else(|| anyhow!("--hex before any function"))?.param =
-                    parse_hex(next(i)?)?;
+                let v = parse_hex(next(i)?)?;
+                *last_call(&mut steps, a)?.1 = Param::Raw(v);
                 i += 2;
             }
             "--coins" => {
-                calls.last_mut().ok_or_else(|| anyhow!("--coins before any function"))?.coins =
-                    next(i)?.parse()?;
+                let v: u64 = next(i)?.parse()?;
+                last_call(&mut steps, a)?.2.coins = v;
                 i += 2;
             }
             "--caller" => {
-                calls.last_mut().ok_or_else(|| anyhow!("--caller before any function"))?.caller =
-                    next(i)?.clone();
+                let v = next(i)?.clone();
+                last_call(&mut steps, a)?.2.caller = v;
                 i += 2;
             }
             "--deploy" => {
-                calls.last_mut().ok_or_else(|| anyhow!("--deploy before any function"))?.deploy = true;
+                last_call(&mut steps, a)?.2.deploy_context = true;
                 i += 1;
             }
             ";" => i += 1,
             other if other.starts_with("--") => bail!("unknown option {other}"),
             other => {
-                calls.push(Call {
+                steps.push(Step::Call {
                     function: other.to_string(),
-                    param: Vec::new(),
-                    coins: 0,
-                    deploy: false,
-                    caller: CALLER.to_string(),
+                    target: "@main".to_string(),
+                    param: Param::Raw(Vec::new()),
+                    opts: CallOptions::default(),
                 });
                 i += 1;
             }
         }
     }
-    if calls.is_empty() {
-        bail!("no function to call");
+    if steps.is_empty() {
+        bail!("no step to run");
     }
 
-    let gas_costs = GasCosts::default();
-    let limits = node_condom_limits();
-    let mut state = State::default();
-    state.chain_id = chain_id;
-    state.gas_costs = gas_costs.clone();
-    state.condom_limits = limits.clone();
-    state.op_datastore = op_ds;
-    state.ledger.insert(
-        CALLER.to_string(),
-        Account { balance: 1_000_000_000_000, bytecode: vec![], datastore: BTreeMap::new() },
-    );
-    state.ledger.insert(
-        SC.to_string(),
-        Account { balance: sc_balance, bytecode: wasm.clone(), datastore: initial_ds.into_iter().collect() },
-    );
-    let interface = SimInterface::new(state);
-
-    let t0 = std::time::Instant::now();
-    let module = RuntimeModule::new(&wasm, gas_costs.clone(), runtime::Compiler::CL, limits.clone())
-        .map_err(|e| anyhow!("MODULE REJECTED BY THE RUNTIME: {e:#}"))?;
-    eprintln!("module compiled in {:.1?}", t0.elapsed());
+    // Deploy the modules (no constructor call: steps decide what to run).
+    runner.set_bytecode(DEFAULT_CONTRACT, &wasm).map_err(|e| anyhow!("{}: {e}", args[1]))?;
+    for (k, v) in initial_ds {
+        runner.set_datastore(DEFAULT_CONTRACT, k, v);
+    }
+    for (name, file) in &extra_contracts {
+        let bytes = std::fs::read(file).with_context(|| format!("reading {file}"))?;
+        let address = runner.new_address();
+        runner.set_bytecode(&address, &bytes).map_err(|e| anyhow!("{file}: {e}"))?;
+        names.insert(name.clone(), address);
+    }
+    for (k, v) in raw_opds {
+        runner.set_op_datastore(parse_value(&k, &names)?, parse_value(&v, &names)?);
+    }
+    eprintln!("contracts: {}", names.iter().map(|(n, a)| format!("@{n}={a}")).collect::<Vec<_>>().join(" "));
 
     let mut failed = false;
-    for call in calls {
-        let is_main = call.function == "main";
-        {
-            let mut st = interface.state.lock().unwrap();
-            st.stack.clear();
-            st.ledger.entry(call.caller.clone()).or_insert(Account {
-                balance: 1_000_000_000_000,
-                bytecode: vec![],
-                datastore: BTreeMap::new(),
-            });
-            if is_main {
-                st.ledger.get_mut(&call.caller).unwrap().bytecode = wasm.clone();
-                st.stack.push(CallFrame {
-                    address: call.caller.clone(),
-                    coins: 0,
-                    owned: vec![call.caller.clone()],
-                });
-            } else {
-                if call.coins > 0 {
-                    let b = &mut st.ledger.get_mut(&call.caller).unwrap().balance;
-                    *b =
-                        b.checked_sub(call.coins).ok_or_else(|| anyhow!("caller cannot afford the coins"))?;
-                    st.ledger.get_mut(SC).unwrap().balance += call.coins;
-                }
-                let mut owned = vec![call.caller.clone()];
-                if call.deploy {
-                    owned.push(SC.to_string());
-                }
-                st.stack.push(CallFrame { address: call.caller.clone(), coins: 0, owned });
-                st.stack.push(CallFrame {
-                    address: SC.to_string(),
-                    coins: call.coins,
-                    owned: vec![SC.to_string()],
-                });
+    for step in steps {
+        match step {
+            Step::Swap { target, file } => {
+                let bytes = std::fs::read(&file).with_context(|| format!("reading {file}"))?;
+                let target = resolve(&target, &names);
+                runner.set_bytecode(&target, &bytes).map_err(|e| anyhow!("{file}: {e}"))?;
+                println!("== swapped bytecode of {target} for {file} ({} bytes)", bytes.len());
             }
-        }
-        println!("== {}({}) coins={} caller={}", call.function, hex(&call.param), call.coins, call.caller);
-        let t = std::time::Instant::now();
-        let res = if is_main {
-            run_main(&interface, module.clone(), gas_limit, gas_costs.clone(), limits.clone())
-        } else {
-            run_function(
-                &interface,
-                module.clone(),
-                &call.function,
-                &call.param,
-                gas_limit,
-                gas_costs.clone(),
-                limits.clone(),
-            )
-        };
-        let mut st = interface.state.lock().unwrap();
-        match res {
-            Ok(resp) => {
+            Step::Call { function, target, param, mut opts } => {
+                let param = match param {
+                    Param::Raw(bytes) => bytes,
+                    Param::Spec(spec) => encode_args(&spec, &names)?,
+                };
+                let target = resolve(&target, &names);
+                opts.caller = resolve(&opts.caller, &names);
                 println!(
-                    "   ok: return={} {:?} gas={} ({:.1?})",
-                    hex(&resp.ret),
-                    String::from_utf8_lossy(&resp.ret),
-                    gas_limit - resp.remaining_gas,
-                    t.elapsed()
+                    "== {function}({}) at {target} coins={} caller={}",
+                    hex(&param),
+                    opts.coins,
+                    opts.caller
                 );
+                let t = std::time::Instant::now();
+                let res = if function == "main" {
+                    let caller = opts.caller.clone();
+                    runner.execute(&caller, &runner.bytecode(&target))
+                } else {
+                    runner.call_with(&target, &function, &param, opts)
+                };
+                match res {
+                    Ok(out) => {
+                        println!(
+                            "   ok: return={} {:?} gas={} ({:.1?})",
+                            hex(&out.ret),
+                            String::from_utf8_lossy(&out.ret),
+                            out.gas,
+                            t.elapsed()
+                        );
+                        for e in &out.events {
+                            println!("   event: {e}");
+                        }
+                        for m in &out.async_messages {
+                            println!("   async message: {m}");
+                        }
+                    }
+                    Err(e) => {
+                        failed = true;
+                        println!("   ERROR: {e}");
+                    }
+                }
             }
-            Err(e) => {
-                failed = true;
-                println!("   ERROR: {e}");
-            }
-        }
-        for ev in st.events.drain(..) {
-            println!("   event: {ev}");
-        }
-        for m in st.async_messages.drain(..) {
-            println!("   async message: {m}");
         }
     }
     if !quiet {
-        let st = interface.state.lock().unwrap();
         println!("== final state");
-        for (addr, acc) in &st.ledger {
+        for acc in runner.accounts() {
+            let addr = &acc.address;
+            let name =
+                names.iter().find(|(_, a)| *a == addr).map(|(n, _)| format!(" (@{n})")).unwrap_or_default();
             println!(
-                "{addr}: balance={} bytecode={}B datastore={} keys",
+                "{addr}{name}: balance={} bytecode={}B datastore={} keys",
                 acc.balance,
-                acc.bytecode.len(),
+                acc.bytecode_len,
                 acc.datastore.len()
             );
             for (k, v) in &acc.datastore {

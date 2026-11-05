@@ -4,7 +4,9 @@
 
 use massa_sc_sdk::prelude::*;
 
+/// Prefix of balance entries: `"BALANCE" ++ address`.
 pub const BALANCE_KEY_PREFIX: &str = "BALANCE";
+/// Prefix of allowance entries: `"ALLOWANCE" ++ owner ++ spender`.
 pub const ALLOWANCE_KEY_PREFIX: &str = "ALLOWANCE";
 
 /// Decode a little-endian `u256` from storage bytes (zero when malformed).
@@ -82,6 +84,7 @@ pub fn total_supply() -> U256 {
     read_u256(&storage::get(super::TOTAL_SUPPLY_KEY))
 }
 
+/// Overwrite the total supply.
 pub fn set_total_supply(supply: U256) {
     storage::set(super::TOTAL_SUPPLY_KEY, supply.to_le_bytes());
 }

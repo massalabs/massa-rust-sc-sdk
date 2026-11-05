@@ -20,6 +20,7 @@ use massa_sc_sdk::prelude::*;
 
 use crate::ownership;
 
+/// Value returned by `version()`.
 pub const VERSION: &str = "0.1.0";
 
 /// Initialize the collection URI and make the caller its owner. Call it from
@@ -32,9 +33,11 @@ pub fn constructor(uri: &str) {
 
 pub use internals::{balance_of, balance_of_batch, is_approved_for_all, uri};
 
+/// Entry points taking serialized arguments (the on-chain interface).
 pub mod entrypoints {
     use super::*;
 
+    /// `version() -> string bytes`
     pub fn version() -> Vec<u8> {
         VERSION.as_bytes().to_vec()
     }

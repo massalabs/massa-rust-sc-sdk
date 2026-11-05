@@ -1,0 +1,16 @@
+{
+  "name": "massa-rust-sc-sdk-interop-as",
+  "private": true,
+  "type": "module",
+  "description": "AssemblyScript fixtures for the Rust <-> AssemblyScript interoperability suite",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "@massalabs/as-types": "^2.1.0",
+    "@massalabs/massa-as-sdk": "^3.0.2",
+    "@massalabs/sc-standards": "^1.3.0",
+    "as-bignum": "^0.3.1",
+    "assemblyscript": "^0.27.2"
+  }
+}

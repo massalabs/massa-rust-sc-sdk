@@ -11,7 +11,9 @@ use crate::ownership;
 pub use super::internals::owner_of;
 pub use super::internals::{balance_of, get_approved, is_approved_for_all, name, symbol};
 
+/// Datastore key of the total supply (`u256`, little-endian).
 pub const TOTAL_SUPPLY_KEY: &str = "totalSupply";
+/// Prefix of enumeration entries: `"ownedTokens" ++ owner ++ tokenId`.
 pub const OWNED_TOKENS_KEY: &str = "ownedTokens";
 
 /// Initialize the collection (metadata, zero supply) and make the caller its
@@ -23,6 +25,7 @@ pub fn constructor(name: &str, symbol: &str) {
     ownership::set_owner(&context::caller());
 }
 
+/// Number of existing tokens.
 pub fn total_supply() -> U256 {
     read_u256(&storage::get(TOTAL_SUPPLY_KEY))
 }
@@ -97,6 +100,7 @@ pub fn update(to: Option<&Address>, token_id: U256, auth: Option<&Address>) -> O
     previous
 }
 
+/// Transfer `token_id` from `from` to `to` on behalf of the caller, keeping the enumeration up to date.
 pub fn transfer_from(from: &Address, to: &Address, token_id: U256) {
     assert!(is_authorized(&context::caller(), token_id), "Unauthorized caller");
     assert!(owner_of(token_id).as_ref() == Some(from), "Unauthorized from");
@@ -105,6 +109,7 @@ pub fn transfer_from(from: &Address, to: &Address, token_id: U256) {
     update(Some(to), token_id, Some(from));
 }
 
+/// Entry points taking serialized arguments.
 pub mod entrypoints {
     use super::*;
 

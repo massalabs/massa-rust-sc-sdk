@@ -15,14 +15,17 @@ use crate::args::{Args, ArgsDecode, ArgsEncode, Result as ArgsResult};
 pub struct Address(String);
 
 impl Address {
+    /// Wrap an address string (no validation).
     pub const fn new(address: String) -> Self {
         Self(address)
     }
 
+    /// String form.
     pub fn as_str(&self) -> &str {
         &self.0
     }
 
+    /// Consume into the string form.
     pub fn into_string(self) -> String {
         self.0
     }
@@ -40,7 +43,7 @@ impl Address {
     /// Aborts the execution when the address is not valid.
     pub fn assert_valid(&self) -> &Self {
         if !self.is_valid() {
-            crate::abort(&alloc::format!("{} is not a valid address", self.0));
+            crate::abort(&crate::concat_str(&[&self.0, " is not a valid address"]));
         }
         self
     }

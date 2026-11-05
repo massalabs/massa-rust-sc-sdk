@@ -18,7 +18,7 @@
 //! macro that generates the `#[export]` wrappers in *your* contract crate
 //! (so you pick exactly which functions are exposed). A complete token:
 //!
-//! ```ignore
+//! ```
 //! #![cfg_attr(target_arch = "wasm32", no_std)]
 //! use massa_sc_sdk::prelude::*;
 //! use massa_sc_standards::{export_mrc20, export_mrc20_burnable, export_mrc20_mintable, export_ownable, mrc20};
@@ -42,6 +42,7 @@
 //! hardenings: `burn` on MRC721 requires the caller to be authorized on the
 //! token, and `increaseAllowance` saturates instead of wrapping.
 #![cfg_attr(target_arch = "wasm32", no_std)]
+#![warn(missing_docs)]
 
 extern crate alloc;
 

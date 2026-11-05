@@ -4,18 +4,21 @@
 //! smart contracts in Rust, compiled to small, gas-efficient WebAssembly
 //! modules that the Massa runtime executes exactly like AssemblyScript ones.
 //!
-//! ```ignore
+//! ```
 //! #![cfg_attr(target_arch = "wasm32", no_std)]
 //! use massa_sc_sdk::prelude::*;
 //!
 //! const COUNTER: &[u8] = b"counter";
 //!
+//! /// Called once by the deployer, with write access to the new contract.
 //! #[export]
-//! pub fn constructor(_args: Args) {
+//! pub fn constructor(mut args: Args) {
 //!     assert!(context::is_deploying_contract(), "not deploying");
-//!     storage::set(COUNTER, 0u64.to_le_bytes());
+//!     let initial: u64 = args.next().unwrap_or(0);
+//!     storage::set_value(COUNTER, &initial);
 //! }
 //!
+//! /// `increment(by: u64 = 1) -> u64`
 //! #[export]
 //! pub fn increment(mut args: Args) -> u64 {
 //!     let by: u64 = args.next().unwrap_or(1);
@@ -24,6 +27,14 @@
 //!     generate_event(&format!("counter is now {value}"));
 //!     value
 //! }
+//!
+//! // Natively, the same functions run against the in-memory mock VM:
+//! # use massa_sc_sdk::mock;
+//! mock::reset();
+//! mock::set_deploy_context(None);
+//! constructor(Args::new().add(10u64));
+//! assert_eq!(increment(Args::new().add(5u64)), 15);
+//! assert_eq!(mock::events(), vec!["counter is now 15"]);
 //! ```
 //!
 //! * [`storage`], [`context`], [`coins`], [`contract`], [`deferred_calls`],
@@ -41,6 +52,7 @@
 //! The crate is `no_std` on wasm. The [`prelude`] re-exports the usual `alloc`
 //! items (`Vec`, `String`, `format!`, `vec!`...) so contracts don't need to.
 #![cfg_attr(target_arch = "wasm32", no_std)]
+#![warn(missing_docs)]
 #![allow(clippy::new_without_default)]
 
 extern crate alloc;
@@ -84,6 +96,17 @@ pub use panic::abort;
 
 #[cfg(feature = "macros")]
 pub use massa_sc_sdk_macros::{export, Serializable};
+
+/// Concatenate string pieces without going through `core::fmt`
+/// (keeps formatting code out of contracts that never format).
+#[doc(hidden)]
+pub fn concat_str(parts: &[&str]) -> alloc::string::String {
+    let mut s = alloc::string::String::with_capacity(parts.iter().map(|p| p.len()).sum());
+    for p in parts {
+        s.push_str(p);
+    }
+    s
+}
 
 /// Alias of [`abort`] matching the AssemblyScript vocabulary.
 #[inline(always)]

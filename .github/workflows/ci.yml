@@ -51,6 +51,43 @@ jobs:
           cd ci-token && cargo test && cargo massa build --no-wasm-opt
           massa-sc-runner build/ci_token.wasm constructor --args "s:T,s:T,u8:9,u256:1000" --deploy \; balanceOf --args "addr:AU1dQZLc618t4CNYWYiDnFnq585kifefr1EAcMi5jddJZGQJXJXL" --quiet
 
+  interop:
+    name: AssemblyScript interoperability (${{ matrix.standards }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - standards: massa-standards main
+            env_legacy: ""
+          - standards: published sc-standards
+            env_legacy: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32v1-none
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            .
+            tools/massa-sc-runner
+            interop/rust
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: clone massa-standards
+        if: matrix.env_legacy == ''
+        run: git clone --depth 1 https://github.com/massalabs/massa-standards /tmp/massa-standards
+      - name: build the fixtures
+        run: |
+          if [ -z "${{ matrix.env_legacy }}" ]; then export SC_STANDARDS=/tmp/massa-standards/smart-contracts; fi
+          interop/build.sh
+      - name: run the suite in the Massa runtime
+        env:
+          INTEROP_LEGACY_STANDARDS: ${{ matrix.env_legacy }}
+        run: cd tools/massa-sc-runner && cargo test --release --test interop
+
   msrv:
     name: MSRV 1.85
     runs-on: ubuntu-latest
