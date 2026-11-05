@@ -1,43 +1,34 @@
-[package]
-name = "massa-rust-sc-sdk"
-version = "0.1.0"
+[workspace]
+resolver = "2"
+members = [
+    "massa-sc-sdk",
+    "massa-sc-sdk-macros",
+    "massa-sc-standards",
+    "cargo-massa",
+]
+
+[workspace.package]
+version = "0.2.0"
 edition = "2021"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/massalabs/massa-rust-sc-sdk"
+authors = ["Massa Labs <info@massa.net>"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace.dependencies]
+massa-sc-sdk = { path = "massa-sc-sdk", version = "0.2.0", default-features = false }
+massa-sc-sdk-macros = { path = "massa-sc-sdk-macros", version = "0.2.0" }
+massa-sc-standards = { path = "massa-sc-standards", version = "0.2.0", default-features = false }
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[dependencies]
-prost = { version = "0.11.8", default-features = false, features = [
-    "prost-derive",
-] } # specify the exact version to ensure determinism
-prost-types = { version = "0.11.8", default-features = false }
-# cfg-if = "1.0.0"
-dlmalloc = { version = "0.2.4", features = ["global"] }
-log = "0.4.14"
-# anyhow = { version = "1.0.70", default-features = false }
-
-[build-dependencies]
-prost-build = "0.11.8" # specify exact version to ensure determinism
-glob = "0.3.1"
-
-[dev-dependencies]
-log = "0.4.14"
-
-[features]
-prost-build = []
-testing = []
-
+# Release profile tuned for small, gas-efficient contracts. Contract crates
+# that live outside this workspace should copy this block (see README).
 [profile.release]
-lto = true
-opt-level = "z"
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
 strip = true
-#debug = true
-#strip = "debuginfo"
-#strip = true
-
-[profile.dev]
-lto = true
-opt-level = "z"
-strip = true
+debug = false
+# Keep integer overflow checks in release builds: a silently wrapping
+# arithmetic bug is far more expensive than the few extra instructions.
+overflow-checks = true

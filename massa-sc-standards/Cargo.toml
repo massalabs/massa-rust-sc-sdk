@@ -1,0 +1,15 @@
+[package]
+name = "massa-sc-standards"
+description = "Massa smart-contract standards (MRC20, MRC721, MRC1155, ownership, access control) for massa-sc-sdk"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+massa-sc-sdk = { workspace = true, features = ["macros"] }
+
+[features]
+default = []
