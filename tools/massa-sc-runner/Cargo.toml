@@ -10,19 +10,17 @@ publish = false
 # Standalone workspace: pulls wasmer, which the SDK workspace must not depend on.
 [workspace]
 
-[features]
-default = ["massa"]
-# Massa runtime (massa-sc-runtime).
-massa = ["dep:massa-sc-runtime", "dep:massa-proto-rs"]
-# C-Layer runtime (c-layer-sc-runtime): adds the `assembly_script_hash_mimc` host function.
-clayer = ["dep:clayer-sc-runtime", "dep:clayer-proto-rs"]
+# The C-Layer flavour (adds the `hash_mimc` host function) lives in `clayer/`:
+# its runtime is a private repository, so it is a separate, non-CI manifest
+# that compiles these same sources with the `clayer` cfg.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("clayer"))'] }
 
 [dependencies]
 # Pin the runtime revision used by the node you target.
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", rev = "b40ec3899ca7eec92ee206d50c701157f7f429b4", features = ["testing"], optional = true }
-clayer-sc-runtime = { package = "massa-sc-runtime", git = "https://github.com/massalabs/c-layer-sc-runtime", rev = "b84be8efe714ba4d207a2781f0363b4924df6f9d", features = ["testing"], optional = true }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", rev = "0bcc52f40d2d7d596eeaf8f8713364bd7c15594b", optional = true }
-clayer-proto-rs = { package = "massa-proto-rs", git = "https://github.com/massalabs/massa-proto-rs.git", rev = "f54e4395a2323aecd1b47b092bca345c51fae9b8", optional = true }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", rev = "b40ec3899ca7eec92ee206d50c701157f7f429b4", features = ["testing"] }
+# Only here because the runtime's `Interface` trait still names the (disabled) wasmv1 types.
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", rev = "0bcc52f40d2d7d596eeaf8f8713364bd7c15594b" }
 anyhow = "1"
 sha2 = "0.10"
 sha3 = "0.10"

@@ -95,6 +95,6 @@ through `wasm-opt --mvp-features --enable-bulk-memory --enable-sign-ext
 events, gas and the final datastore:
 
 ```sh
-cargo install --path tools/massa-sc-runner          # or --features clayer for C-Layer ABIs
+cargo install --path tools/massa-sc-runner          # or tools/massa-sc-runner/clayer for the C-Layer ABI
 massa-sc-runner build/counter.wasm constructor --args u64:10 --deploy \; increment --args u64:5 \; get
 ```

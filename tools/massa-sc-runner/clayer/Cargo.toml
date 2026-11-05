@@ -1,0 +1,33 @@
+[package]
+name = "massa-sc-runner-clayer"
+description = "massa-sc-runner built on the C-Layer runtime (c-layer-sc-runtime: adds the hash_mimc host function)"
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/massalabs/massa-rust-sc-sdk"
+publish = false
+
+# Separate workspace: c-layer-sc-runtime is a private repository, so this
+# flavour is not part of the public build. Same sources as ../src.
+[workspace]
+
+[[bin]]
+name = "massa-sc-runner-clayer"
+path = "src/main.rs"
+
+[features]
+default = ["clayer"]
+clayer = []
+
+[dependencies]
+clayer-sc-runtime = { package = "massa-sc-runtime", git = "https://github.com/massalabs/c-layer-sc-runtime", rev = "b84be8efe714ba4d207a2781f0363b4924df6f9d", features = ["testing"] }
+clayer-proto-rs = { package = "massa-proto-rs", git = "https://github.com/massalabs/massa-proto-rs.git", rev = "f54e4395a2323aecd1b47b092bca345c51fae9b8" }
+anyhow = "1"
+sha2 = "0.10"
+sha3 = "0.10"
+blake3 = "1"
+ethnum = "1.5"
+wasmparser = "0.229"
+
+[profile.release]
+opt-level = 2

@@ -19,6 +19,11 @@
 * `massa-sc-runner` is also a library (`Runner`): several contracts, calls
   between them, bytecode swaps on a datastore; CLI gains `--contract`,
   `--at`, `--swap`.
+* The C-Layer flavour of the runner is a separate manifest
+  (`tools/massa-sc-runner/clayer`, binary `massa-sc-runner-clayer`): its
+  runtime is a private repository, so the public build and CI no longer
+  depend on it. Both flavours link on Rust 1.90+ (`__rust_probestack` shim
+  for wasmer-vm 4).
 * `cargo massa build/check --network massa|clayer|any`; `cargo massa new`
   ships a massa-web3 deploy script.
 * Every public item of `massa-sc-sdk` and `massa-sc-standards` is documented
