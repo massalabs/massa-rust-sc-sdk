@@ -323,7 +323,7 @@ mod tests {
         assert_eq!(try_get("k"), None);
         set("k", "v");
         assert_eq!(get("k"), b"v");
-        append("k", [b'!']);
+        append("k", "!");
         assert_eq!(get_or("k", b"x".to_vec()), b"v!");
         assert!(del_if_exists("k"));
         assert!(!del_if_exists("k"));

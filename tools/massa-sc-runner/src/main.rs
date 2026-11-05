@@ -6,6 +6,8 @@
 //! massa-sc-runner build/counter.wasm constructor --args u64:10 --deploy \; increment --args u64:5 \; get
 //! ```
 
+#![allow(clippy::manual_is_multiple_of, clippy::field_reassign_with_default)]
+
 mod mimc;
 mod sim;
 
