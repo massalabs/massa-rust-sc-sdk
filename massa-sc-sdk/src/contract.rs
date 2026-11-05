@@ -34,9 +34,21 @@ pub fn local_execution(bytecode: &[u8], function: &str, args: impl AsRef<[u8]>) 
 /// Deploy `bytecode` at a new address and return it. The current execution
 /// gets write access to the new address until it ends (to initialize its
 /// datastore, send it coins, or call its `constructor`).
+///
+/// The storage of the new address ([`deploy_cost`]) is paid by the current
+/// contract: make sure its balance covers it (e.g. from the coins sent with
+/// the call), or the execution aborts.
 #[inline]
 pub fn create_sc(bytecode: &[u8]) -> Address {
     Address::from(env::create_sc(bytecode))
+}
+
+/// Coins (nanoMAS) the creator pays when [`create_sc`] deploys `bytecode_len`
+/// bytes on a Massa network: a new ledger entry plus one storage byte per
+/// bytecode byte (a 20 KiB contract costs about 2 MAS). C-Layer networks
+/// charge far less (see [`crate::constants::CLAYER_STORAGE_BYTE_COST`]).
+pub const fn deploy_cost(bytecode_len: usize) -> u64 {
+    crate::constants::NEW_LEDGER_ENTRY_COST + bytecode_len as u64 * crate::constants::STORAGE_BYTE_COST
 }
 
 /// `true` when the contract at `address` exports `function`.
