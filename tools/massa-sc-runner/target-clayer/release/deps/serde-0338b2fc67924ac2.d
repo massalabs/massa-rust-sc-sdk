@@ -1,0 +1,14 @@
+/home/damip/rust-sdk/massa-rust-sc-sdk/tools/massa-sc-runner/target-clayer/release/deps/serde-0338b2fc67924ac2.d: /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs /home/damip/rust-sdk/massa-rust-sc-sdk/tools/massa-sc-runner/target-clayer/release/build/serde-655fadfec8fd7fa6/out/private.rs
+
+/home/damip/rust-sdk/massa-rust-sc-sdk/tools/massa-sc-runner/target-clayer/release/deps/libserde-0338b2fc67924ac2.rlib: /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs /home/damip/rust-sdk/massa-rust-sc-sdk/tools/massa-sc-runner/target-clayer/release/build/serde-655fadfec8fd7fa6/out/private.rs
+
+/home/damip/rust-sdk/massa-rust-sc-sdk/tools/massa-sc-runner/target-clayer/release/deps/libserde-0338b2fc67924ac2.rmeta: /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs /home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs /home/damip/rust-sdk/massa-rust-sc-sdk/tools/massa-sc-runner/target-clayer/release/build/serde-655fadfec8fd7fa6/out/private.rs
+
+/home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs:
+/home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs:
+/home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs:
+/home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs:
+/home/damip/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs:
+/home/damip/rust-sdk/massa-rust-sc-sdk/tools/massa-sc-runner/target-clayer/release/build/serde-655fadfec8fd7fa6/out/private.rs:
+
+# env-dep:OUT_DIR=/home/damip/rust-sdk/massa-rust-sc-sdk/tools/massa-sc-runner/target-clayer/release/build/serde-655fadfec8fd7fa6/out

@@ -180,5 +180,19 @@ fn expand_serializable(input: DeriveInput) -> syn::Result<proc_macro2::TokenStre
                 #decode_body
             }
         }
+        // Entry points may return the struct (serialized) or take it as their parameter.
+        impl #impl_generics #sdk::entrypoint::IntoReturn for #name #ty_generics #where_clause {
+            fn into_return_bytes(self) -> #sdk::prelude::Vec<u8> {
+                #sdk::ArgsEncode::encode(&self)
+            }
+        }
+        impl #impl_generics #sdk::entrypoint::FromParam for #name #ty_generics #where_clause {
+            fn from_param(bytes: #sdk::prelude::Vec<u8>) -> Self {
+                match #sdk::ArgsDecode::decode_bytes(&bytes) {
+                    ::core::result::Result::Ok(v) => v,
+                    ::core::result::Result::Err(e) => #sdk::abort(&#sdk::prelude::format!("invalid parameter: {e}")),
+                }
+            }
+        }
     })
 }

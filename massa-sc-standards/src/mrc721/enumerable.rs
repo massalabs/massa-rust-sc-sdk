@@ -4,9 +4,12 @@
 
 use massa_sc_sdk::prelude::*;
 
-use super::internals::{self, is_authorized, owner_key, owner_of};
+use super::internals::{self, is_authorized, owner_key};
 use crate::mrc20::internals::read_u256;
 use crate::ownership;
+
+pub use super::internals::owner_of;
+pub use super::internals::{balance_of, get_approved, is_approved_for_all, name, symbol};
 
 pub const TOTAL_SUPPLY_KEY: &str = "totalSupply";
 pub const OWNED_TOKENS_KEY: &str = "ownedTokens";
@@ -48,9 +51,24 @@ fn owned_token_key(owner: &Address, token_id: U256) -> Vec<u8> {
     k
 }
 
-/// Token ids owned by `owner` (one page of at most
-/// `MAX_DATASTORE_KEYS_PAGE`, see [`storage::get_keys_page`] for the cursor).
-pub fn owned_tokens(owner: &Address, after: Option<U256>, count: u32) -> Vec<U256> {
+/// Token ids owned by `owner`, in ascending order.
+///
+/// Uses the legacy key query, which is available on every network (Massa and
+/// C-Layer) but fails when the owner holds more than
+/// [`massa_sc_sdk::constants::MAX_DATASTORE_KEYS_PAGE`] tokens from
+/// MIP-0002 on; use [`owned_tokens_page`] for collections where that can
+/// happen.
+pub fn owned_tokens(owner: &Address) -> Vec<U256> {
+    let prefix = owned_tokens_prefix(owner);
+    storage::get_keys(&prefix).into_iter().map(|k| read_u256(&k[prefix.len()..])).collect()
+}
+
+/// One page of token ids owned by `owner`, strictly after `after`
+/// (`None` = from the first), at most `count` (`1..=MAX_DATASTORE_KEYS_PAGE`).
+///
+/// Requires execution version >= 2 (MIP-0002): a module calling it cannot be
+/// instantiated on nodes without it (e.g. C-Layer at the time of writing).
+pub fn owned_tokens_page(owner: &Address, after: Option<U256>, count: u32) -> Vec<U256> {
     let prefix = owned_tokens_prefix(owner);
     let start = after.map(|id| owned_token_key(owner, id)).unwrap_or_default();
     storage::get_keys_page(&prefix, start, count).into_iter().map(|k| read_u256(&k[prefix.len()..])).collect()
@@ -165,14 +183,15 @@ mod tests {
             entrypoints::mint(Args::new().add(&owner).add(U256::from(i)));
         }
         assert_eq!(total_supply(), U256::from(3u64));
-        assert_eq!(owned_tokens(&owner, None, 10).len(), 3);
+        assert_eq!(owned_tokens(&owner).len(), 3);
+        assert_eq!(owned_tokens_page(&owner, Some(U256::ONE), 10), vec![U256::from(2u64), U256::from(3u64)]);
         let bob = mock::new_user_address();
         entrypoints::transfer_from(Args::new().add(&owner).add(&bob).add(U256::from(2u64)));
-        assert_eq!(owned_tokens(&owner, None, 10).len(), 2);
-        assert_eq!(owned_tokens(&bob, None, 10), vec![U256::from(2u64)]);
+        assert_eq!(owned_tokens(&owner).len(), 2);
+        assert_eq!(owned_tokens(&bob), vec![U256::from(2u64)]);
         mock::set_caller(&bob);
         entrypoints::burn(Args::new().add(U256::from(2u64)));
         assert_eq!(total_supply(), U256::from(2u64));
-        assert!(owned_tokens(&bob, None, 10).is_empty());
+        assert!(owned_tokens(&bob).is_empty());
     }
 }

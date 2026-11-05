@@ -5,7 +5,8 @@
 //! * [`entrypoints`] + [`crate::export_mrc721!`]: the base standard
 //!   (`name`, `symbol`, `version`, `balanceOf`, `ownerOf`, `getApproved`,
 //!   `isApprovedForAll`, `approve`, `setApprovalForAll`, `transferFrom`,
-//!   `mint` (owner only), `burn`, `ownerAddress`).
+//!   `mint` (owner only), `burn`); add [`crate::export_ownable!`] for
+//!   `ownerAddress` / `setOwner` / `isOwner`.
 //! * [`metadata`] + [`crate::export_mrc721_metadata!`]: `uri(tokenId)`.
 //! * [`enumerable`] + [`crate::export_mrc721_enumerable!`]: total supply and
 //!   per-owner token enumeration (replaces `mint`/`burn`/`transferFrom`).
@@ -170,10 +171,6 @@ macro_rules! __export_mrc721_common {
         #[::massa_sc_sdk::export(name = "setApprovalForAll")]
         pub fn __std_set_approval_for_all(args: ::massa_sc_sdk::Args) {
             $crate::mrc721::entrypoints::set_approval_for_all(args)
-        }
-        #[::massa_sc_sdk::export(name = "ownerAddress")]
-        pub fn __std_owner_address() -> ::massa_sc_sdk::prelude::Vec<u8> {
-            $crate::ownership::entrypoints::owner_address()
         }
     };
 }

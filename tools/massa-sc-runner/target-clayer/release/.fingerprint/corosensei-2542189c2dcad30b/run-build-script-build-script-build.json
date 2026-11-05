@@ -1,0 +1,1 @@
+{"rustc":5391851738765093524,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[3186599133369635565,"build_script_build",false,4699456880221519402]],"local":[{"RerunIfChanged":{"output":"release/build/corosensei-2542189c2dcad30b/output","paths":["build.rs"]}}],"rustflags":[],"config":0,"compile_kind":0}
