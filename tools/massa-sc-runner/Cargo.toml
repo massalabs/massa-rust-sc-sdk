@@ -1,0 +1,32 @@
+[package]
+name = "massa-sc-runner"
+description = "Run Massa smart-contract wasm modules locally in the real Massa runtime (massa-sc-runtime) against an in-memory ledger"
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/massalabs/massa-rust-sc-sdk"
+publish = false
+
+# Standalone workspace: pulls wasmer, which the SDK workspace must not depend on.
+[workspace]
+
+[features]
+default = ["massa"]
+# Massa runtime (massa-sc-runtime).
+massa = ["dep:massa-sc-runtime"]
+# C-Layer runtime (c-layer-sc-runtime): adds the `assembly_script_hash_mimc` host function.
+clayer = ["dep:clayer-sc-runtime"]
+
+[dependencies]
+# Pin the runtime revision used by the node you target.
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", rev = "b40ec3899ca7eec92ee206d50c701157f7f429b4", features = ["testing"], optional = true }
+clayer-sc-runtime = { package = "massa-sc-runtime", git = "https://github.com/massalabs/c-layer-sc-runtime", rev = "b84be8efe714ba4d207a2781f0363b4924df6f9d", features = ["testing"], optional = true }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs.git", rev = "0bcc52f40d2d7d596eeaf8f8713364bd7c15594b" }
+anyhow = "1"
+sha2 = "0.10"
+sha3 = "0.10"
+blake3 = "1"
+ethnum = "1.5"
+
+[profile.release]
+opt-level = 2

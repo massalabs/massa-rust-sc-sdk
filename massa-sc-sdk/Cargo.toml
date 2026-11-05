@@ -1,0 +1,41 @@
+[package]
+name = "massa-sc-sdk"
+description = "Rust SDK for writing Massa (and C-Layer) smart contracts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+keywords = ["massa", "smart-contracts", "wasm", "blockchain", "sdk"]
+categories = ["wasm", "no-std", "cryptography::cryptocurrencies"]
+readme = "README.md"
+
+[dependencies]
+massa-sc-sdk-macros = { workspace = true, optional = true }
+ethnum = { version = "1.5", default-features = false }
+
+# Native targets only: real hashes for the in-memory mock VM used by `cargo test`.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+sha2 = { version = "0.10", default-features = false }
+sha3 = { version = "0.10", default-features = false }
+blake3 = { version = "1", default-features = false, features = ["pure"] }
+
+[features]
+default = ["macros", "allocator", "panic-handler", "panic-message"]
+# `#[export]` entry-point attribute and `#[derive(Serializable)]`.
+macros = ["dep:massa-sc-sdk-macros"]
+# Install the SDK's size-class bump allocator as the global allocator (wasm only).
+# Disable it to plug your own `#[global_allocator]`.
+allocator = []
+# Install a `#[panic_handler]` that aborts the execution with the panic message
+# (wasm only). Disable it to provide your own.
+panic-handler = []
+# Keep the full formatted panic message ("panicked at src/lib.rs:12:5: msg {x}").
+# Without it only static messages are reported, which saves a few KiB of
+# `core::fmt` code when nothing else in the contract uses formatting.
+panic-message = []
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["wasm32v1-none", "x86_64-unknown-linux-gnu"]
