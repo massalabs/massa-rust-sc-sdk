@@ -7,8 +7,8 @@ it doubles as a test bench for cross-contract and cross-SDK scenarios
 (AssemblyScript modules run the same way). No node needed.
 
 ```sh
-cargo install --path .                                           # Massa ABI
-cargo install --path . --no-default-features --features clayer   # C-Layer ABI (adds hash_mimc)
+cargo install --path .          # Massa ABI
+cargo install --path clayer     # C-Layer ABI (adds hash_mimc): needs access to the c-layer-sc-runtime repository
 
 massa-sc-runner build/counter.wasm constructor --args u64:10 --deploy \; increment --args u64:5 \; get
 massa-sc-runner build/token.wasm constructor --args "s:My Token,s:MTK,u8:9,u256:1000000" --deploy \

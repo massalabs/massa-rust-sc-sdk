@@ -13,13 +13,15 @@
 //! ```
 
 mod mimc;
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+mod probestack;
 mod sim;
 
 use std::collections::BTreeMap;
 
 #[cfg(feature = "clayer")]
 use clayer_sc_runtime as runtime;
-#[cfg(feature = "massa")]
+#[cfg(not(feature = "clayer"))]
 use massa_sc_runtime as runtime;
 use runtime::{run_function, run_main, CondomLimits, GasCosts, RuntimeModule};
 use sim::{Account, CallFrame, SimInterface, State};

@@ -60,15 +60,6 @@ checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
 
 [[package]]
 name = "as-ffi-bindings"
-version = "0.2.5"
-source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.5.6#ba6583eb2877065090e28985e370feac427641a1"
-dependencies = [
- "anyhow",
- "wasmer",
-]
-
-[[package]]
-name = "as-ffi-bindings"
 version = "0.5.7"
 source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.5.7#c9881d64438a5fe30c33473cb0b56c5ba041a7e8"
 dependencies = [
@@ -1284,29 +1275,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa-proto-rs"
-version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs.git?rev=f54e4395a2323aecd1b47b092bca345c51fae9b8#f54e4395a2323aecd1b47b092bca345c51fae9b8"
-dependencies = [
- "glob",
- "prost",
- "prost-build",
- "prost-types",
- "tonic-build",
- "tower-service",
-]
-
-[[package]]
 name = "massa-sc-runner"
 version = "0.2.0"
 dependencies = [
  "anyhow",
  "blake3",
  "ethnum",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs.git?rev=0bcc52f40d2d7d596eeaf8f8713364bd7c15594b)",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs.git?rev=f54e4395a2323aecd1b47b092bca345c51fae9b8)",
- "massa-sc-runtime 0.10.0 (git+https://github.com/massalabs/massa-sc-runtime?rev=b40ec3899ca7eec92ee206d50c701157f7f429b4)",
- "massa-sc-runtime 0.10.0 (git+https://github.com/massalabs/c-layer-sc-runtime?rev=b84be8efe714ba4d207a2781f0363b4924df6f9d)",
+ "massa-proto-rs",
+ "massa-sc-runtime",
  "massa-sc-sdk",
  "sha2",
  "sha3",
@@ -1319,46 +1295,12 @@ version = "0.10.0"
 source = "git+https://github.com/massalabs/massa-sc-runtime?rev=b40ec3899ca7eec92ee206d50c701157f7f429b4#b40ec3899ca7eec92ee206d50c701157f7f429b4"
 dependencies = [
  "anyhow",
- "as-ffi-bindings 0.5.7",
+ "as-ffi-bindings",
  "base64 0.21.7",
  "chrono",
  "displaydoc",
  "loupe",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs.git?rev=0bcc52f40d2d7d596eeaf8f8713364bd7c15594b)",
- "more-asserts 0.3.1",
- "num_enum",
- "parking_lot",
- "prost",
- "prost-types",
- "rand",
- "regex",
- "serde",
- "serde_json",
- "serial_test",
- "sha2",
- "sha3",
- "thiserror",
- "tracing",
- "wasmer",
- "wasmer-compiler-cranelift",
- "wasmer-compiler-singlepass",
- "wasmer-middlewares",
- "wasmer-types",
- "which",
-]
-
-[[package]]
-name = "massa-sc-runtime"
-version = "0.10.0"
-source = "git+https://github.com/massalabs/c-layer-sc-runtime?rev=b84be8efe714ba4d207a2781f0363b4924df6f9d#b84be8efe714ba4d207a2781f0363b4924df6f9d"
-dependencies = [
- "anyhow",
- "as-ffi-bindings 0.2.5",
- "base64 0.21.7",
- "chrono",
- "displaydoc",
- "loupe",
- "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs.git?rev=f54e4395a2323aecd1b47b092bca345c51fae9b8)",
+ "massa-proto-rs",
  "more-asserts 0.3.1",
  "num_enum",
  "parking_lot",

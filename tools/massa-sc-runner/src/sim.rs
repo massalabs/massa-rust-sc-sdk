@@ -7,7 +7,7 @@ use clayer_proto_rs as massa_proto_rs;
 #[cfg(feature = "clayer")]
 use clayer_sc_runtime as runtime;
 use massa_proto_rs::massa::model::v1::{AddressCategory, ComparisonResult, NativeAmount, NativeTime, Slot};
-#[cfg(feature = "massa")]
+#[cfg(not(feature = "clayer"))]
 use massa_sc_runtime as runtime;
 use runtime::{CondomLimits, GasCosts, Interface, InterfaceClone, InterfaceError, RuntimeModule};
 use sha2::Digest;
@@ -285,8 +285,7 @@ impl Interface for SimInterface {
             .cloned()
             .collect())
     }
-    #[cfg(feature = "massa")]
-    #[cfg(feature = "massa")]
+    #[cfg(not(feature = "clayer"))]
     fn get_keys_paginated(
         &self,
         prefix: Option<&[u8]>,
@@ -296,7 +295,7 @@ impl Interface for SimInterface {
         let cur = self.current()?;
         self.get_keys_for_paginated(&cur, prefix, start_key, count)
     }
-    #[cfg(feature = "massa")]
+    #[cfg(not(feature = "clayer"))]
     fn get_keys_for_paginated(
         &self,
         address: &str,
@@ -445,7 +444,7 @@ impl Interface for SimInterface {
     }
     #[cfg(feature = "clayer")]
     fn hash_mimc(&self, bytes: &[u8]) -> Result<[u8; 32]> {
-        crate::mimc::hash(bytes).map_err(InterfaceError::GenericError)
+        super::mimc::hash(bytes).map_err(InterfaceError::GenericError)
     }
     fn signature_verify(&self, _d: &[u8], _s: &str, _p: &str) -> Result<bool> {
         Ok(false)
